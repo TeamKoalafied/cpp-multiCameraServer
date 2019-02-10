@@ -21,6 +21,8 @@
 #include <opencv2/core/types.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include "cameraserver/CameraServer.h"
+#include <networktables/NetworkTableEntry.h>
+#include <networktables/NetworkTable.h>
 
 /*
    JSON format:
@@ -242,6 +244,18 @@ int main(int argc, char* argv[]) {
     int object_X_Min=0;
     int area = 0;
 
+    nt::NetworkTableEntry xMaxEntry;
+    nt::NetworkTableEntry xMinEntry;
+    nt::NetworkTableEntry yMaxEntry;
+    nt::NetworkTableEntry yMinEntry;
+    auto inst nt::NetworkTableInstance::GetDefault();
+    auto table = inst.GetTable("XYminAndMax");
+    xMaxEntry = table->GetEntry("xMax");
+    xMinEntry = table->GetEntry("xMin");
+    yMaxEntry = table->GetEntry("yMax");
+    yMinEntry = table->GetEntry("yMin");
+    
+
     cameras[0].SetResolution(kWidth, kHeight);
     cameras[1].SetResolution(kWidth, kHeight);
     cs::CvSink cvSink1 = frc::CameraServer::GetInstance()->GetVideo(cameras[0]);
@@ -318,6 +332,11 @@ const int thresh = 10;
         }
       }
 
+      //Send values to NetworkTables
+      xMaxEntry.SetDouble(object_X_Max);
+      xMinEntry.SetDouble(object_X_Min);
+      yMaxEntry.SetDouble(object_Y_Max);
+      yMinEntry.SetDouble(object_Y_Min);
       //Calculate area
       area = (object_X_Max-object_X_Min)*(object_Y_Max-object_Y_Min);
       std::cout<<area<<std::endl;
