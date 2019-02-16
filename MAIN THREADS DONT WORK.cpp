@@ -10,8 +10,6 @@
 #include <thread>
 #include <vector>
 #include "GripCargoPipeline.h"
-#include "GripStripPipeline.h"
-#include "GripHatchPipeline.h"
 #include <networktables/NetworkTableInstance.h>
 #include <vision/VisionPipeline.h>
 #include <vision/VisionRunner.h>
@@ -181,7 +179,7 @@ cs::UsbCamera StartCamera(const CameraConfig& config) {
   auto server = inst->StartAutomaticCapture(camera);
 
   camera.SetConfigJson(config.config);
-  // camera.SetConnectionStrategy(cs::VideoSource::kConnectionKeepOpen);
+  camera.SetConnectionStrategy(cs::VideoSource::kConnectionKeepOpen);
 
   if (config.streamConfig.is_object())
     server.SetConfigJson(config.streamConfig);
@@ -222,154 +220,171 @@ int main(int argc, char* argv[]) {
   for (auto&& cameraConfig : cameraConfigs)
     cameras.emplace_back(StartCamera(cameraConfig));
 
+
   // start image processing on camera 0 if present
   if (cameras.size() >= 1) {
-    std::thread([&] {
-      // frc::VisionRunner<MyPipeline> runner(cameras[0], new MyPipeline(),
-      //                                      [&](MyPipeline &pipeline) {
-      //
-      // });
-      /* something like this for GRIP:
-      frc::VisionRunner<MyPipeline> runner(cameras[0], new grip::GripPipeline(),
-                                           [&](grip::GripPipeline& pipeline) {
-        ...
-      });
-       */
-
-      //runner.RunForever();
     const int kWidth = 320;
     const int kHeight = 240;
-    int object_X_Max=0;
-    int object_Y_Max=0;
-    int object_Y_Min=0;
-    int object_X_Min=0;
-    int centreX; //centre x
-    int centreY; //centre y
-    int objectWidth = 0;
-    int objectArea = 0;
-
-    nt::NetworkTableEntry xMaxEntry;
-    nt::NetworkTableEntry xMinEntry;
-    nt::NetworkTableEntry yMaxEntry;
-    nt::NetworkTableEntry yMinEntry;
-    nt::NetworkTableEntry xLenEntry;
-    nt::NetworkTableEntry yLenEntry;
-    nt::NetworkTableEntry areaEntry;
-    nt::NetworkTableEntry objectWidthEntry;
-
-    auto inst = nt::NetworkTableInstance::GetDefault();
-    auto table = inst.GetTable("GripOutputValues");
-
-    xLenEntry = table -> GetEntry("xLen");
-    yLenEntry = table -> GetEntry("yLen");
-    xMaxEntry = table -> GetEntry("xMax");
-    xMinEntry = table -> GetEntry("xMin");
-    yMaxEntry = table -> GetEntry("yMax");
-    yMinEntry = table -> GetEntry("yMin");
-    areaEntry = table -> GetEntry("area");
-    objectWidthEntry = table -> GetEntry("objectWidth");
-
     cameras[0].SetResolution(kWidth, kHeight);
     cameras[1].SetResolution(kWidth, kHeight);
-    cs::CvSink croppedSink = frc::CameraServer::GetInstance()->GetVideo(cameras[0]);
-    cs::CvSink crosshairsSink = frc::CameraServer::GetInstance()->GetVideo(cameras[1]);
+    cs::CvSink cvSink1 = frc::CameraServer::GetInstance()->GetVideo(cameras[0]);
+    cs::CvSink cvSink2 = frc::CameraServer::GetInstance()->GetVideo(cameras[1]);
+
+    std::thread([&] {
+
+
+
+
     // Setup a CvSource. This will send images back to the Dashboard
-    cs::CvSource croppedOutput =
+    cs::CvSource output1 =
         frc::CameraServer::GetInstance()->PutVideo("Cropped", kWidth, 80);
-    cs::CvSource crosshairsOutput =
+    cs::CvSource output2 =
         frc::CameraServer::GetInstance()->PutVideo("Crosshairs", kWidth, kHeight);
-    cs::CvSource pipelineOutput =
-        frc::CameraServer::GetInstance()->PutVideo("GripPipeline", kWidth, kHeight);
 
     // Mats are very memory expensive. Lets reuse this Mat.
-    cv::Mat wideFovMat;
-    cv::Mat crosshairsMat;
-    cv::Mat pipelineMat;
-//declaring grip pipelines
-    grip::GripCargoPipeline* pipeline = new grip::GripCargoPipeline();
+    cv::Mat mat1;
+    cv::Mat mat2;
 
     while (true) {
       const int thresh = 10;
       // Tell the CvSink to grab a frame from the camera and put it
       // in the source mat.  If there is an error notify the output.
-      if (croppedSink.GrabFrame(wideFovMat) == 0) {
+      if (cvSink1.GrabFrame(mat1) == 0) {
         // Send the output the error.
-        croppedOutput.NotifyError(croppedSink.GetError());
+        output1.NotifyError(cvSink1.GetError());
         // skip the rest of the current iteration
         continue;
       }
-      if (crosshairsSink.GrabFrame(crosshairsMat) == 0) {
+      if (cvSink2.GrabFrame(mat2) == 0) {
         // Send the output the error.
-        crosshairsOutput.NotifyError(crosshairsSink.GetError());
+        output2.NotifyError(cvSink2.GetError());
         // skip the rest of the current iteration
         continue;
       }
       // Put a rectangle on the image (x, y, width, height)
       cv::Rect rectangle = cv::Rect(0,80,kWidth,80);
-      wideFovMat = wideFovMat(rectangle);
+      cv::Mat CroppedImage = mat1(rectangle);
       // add the crosshairs
-      cv::line(crosshairsMat, cv::Point(160, 80), cv::Point(160,105), CV_RGB(255,0,0));
-      cv::line(crosshairsMat, cv::Point(160, 135), cv::Point(160,160), CV_RGB(255,0,0));
-      cv::line(crosshairsMat, cv::Point(120, 120), cv::Point(145,120), CV_RGB(255,0,0));
-      cv::line(crosshairsMat, cv::Point(175, 120), cv::Point(200,120), CV_RGB(255,0,0));
+      cv::line(mat2, cv::Point(160, 80), cv::Point(160,105), CV_RGB(255,0,0));
+      cv::line(mat2, cv::Point(160, 135), cv::Point(160,160), CV_RGB(255,0,0));
+      cv::line(mat2, cv::Point(120, 120), cv::Point(145,120), CV_RGB(255,0,0));
+      cv::line(mat2, cv::Point(175, 120), cv::Point(200,120), CV_RGB(255,0,0));
       // Give the output stream a new image to display
-      croppedOutput.PutFrame(wideFovMat);
-      crosshairsOutput.PutFrame(crosshairsMat);
+      output1.PutFrame(CroppedImage);
 
-      //Vision process
-      pipeline->Process(wideFovMat);
-      pipelineMat = *(pipeline->GetRgbThresholdOutput());
-      //Vision pixel process
-      struct Pixbgr
-      {
-        unsigned char b:8;
-      };
-      object_X_Max=0;
-      object_Y_Max=0;
-      object_Y_Min=pipelineMat.rows-1;
-      object_X_Min=pipelineMat.cols-1;
-      for(int i = 0; i < pipelineMat.rows; i++)
-      {
-        const struct Pixbgr* Mi = pipelineMat.ptr<struct Pixbgr>(i);
-        for(int j = 0; j < pipelineMat.cols; j++)
-        {
-          if (Mi[j].b > thresh)
-          {
-            if (j < object_X_Min)
-              object_X_Min = j;
-            if (j > object_X_Max)
-              object_X_Max = j;
-            if (i < object_Y_Min)
-              object_Y_Min = i;
-            if (i > object_Y_Max)
-              object_Y_Max = i;
-          }
-        }
-      }
+      output2.PutFrame(mat2);
 
-      //Send values to NetworkTables
-      xMaxEntry.SetDouble(object_X_Max);
-      xMinEntry.SetDouble(object_X_Min);
-      yMaxEntry.SetDouble(object_Y_Max);
-      yMinEntry.SetDouble(object_Y_Min);
-      //Calculate area
-      objectArea = (object_X_Max-object_X_Min) * (object_Y_Max-object_Y_Min);
-      std::cout << objectArea << std::endl;
-      std::cout << object_X_Max << std::endl;
-      std::cout << object_X_Min << std::endl;
-      objectWidth = sqrt(objectArea);
-      //it is the average of the centres of object
-      centreX = object_X_Max - object_X_Min;
-      centreY = object_Y_Max - object_Y_Min;
-      std::cout << centreX << std::endl;
-      std::cout << centreY << std::endl;
-      pipelineOutput.PutFrame(pipelineMat);
-      xLenEntry.SetDouble(centreX);
-      yLenEntry.SetDouble(centreY);
-      areaEntry.SetDouble(objectArea);
-      objectWidthEntry.SetDouble(objectWidth);
+
      }
    }).detach();
+
+   std::thread([&] {
+
+   const int kWidth = 320;
+   const int kHeight = 240;
+   int object_X_Max=0;
+   int object_Y_Max=0;
+   int object_Y_Min=0;
+   int object_X_Min=0;
+   int cX; //centre x
+   int cY; //centre y
+   int objectWidth = 0;
+   int area = 0;
+
+   nt::NetworkTableEntry xMaxEntry;
+   nt::NetworkTableEntry xMinEntry;
+   nt::NetworkTableEntry yMaxEntry;
+   nt::NetworkTableEntry yMinEntry;
+   nt::NetworkTableEntry xLenEntry;
+   nt::NetworkTableEntry yLenEntry;
+   nt::NetworkTableEntry areaEntry;
+   nt::NetworkTableEntry objectWidthEntry;
+
+   auto inst = nt::NetworkTableInstance::GetDefault();
+   auto table = inst.GetTable("GripOutputValues");
+
+   xLenEntry = table -> GetEntry("xLen");
+   yLenEntry = table -> GetEntry("yLen");
+   xMaxEntry = table -> GetEntry("xMax");
+   xMinEntry = table -> GetEntry("xMin");
+   yMaxEntry = table -> GetEntry("yMax");
+   yMinEntry = table -> GetEntry("yMin");
+   areaEntry = table -> GetEntry("area");
+   objectWidthEntry = table -> GetEntry("objectWidth");
+
+   cs::CvSource output3 =
+       frc::CameraServer::GetInstance()->PutVideo("GripPipeline", kWidth, kHeight);
+
+   // Mats are very memory expensive. Lets reuse this Mat.
+   cv::Mat mat1;
+   cv::Mat mat4;
+   grip::GripCargoPipeline* pipeline = new grip::GripCargoPipeline();
+   while (true) {
+     const int thresh = 10;
+     // Tell the CvSink to grab a frame from the camera and put it
+     // in the source mat.  If there is an error notify the output.
+     if (cvSink1.GrabFrame(mat1) == 0) {
+       // Send the output the error.
+       output3.NotifyError(cvSink1.GetError());
+       // skip the rest of the current iteration
+       continue;
+     }
+
+     //Vision process
+     pipeline->Process(mat1);
+     mat4 = *(pipeline->GetRgbThresholdOutput());
+     //Vision pixel process
+     struct Pixbgr
+     {
+       unsigned char b:8;
+     };
+     object_X_Max=0;
+     object_Y_Max=0;
+     object_Y_Min=mat4.rows-1;
+     object_X_Min=mat4.cols-1;
+     for(int i = 0; i < mat4.rows; i++)
+     {
+       const struct Pixbgr* Mi = mat4.ptr<struct Pixbgr>(i);
+       for(int j = 0; j < mat4.cols; j++)
+       {
+         if (Mi[j].b > thresh)
+         {
+           if (j < object_X_Min)
+             object_X_Min = j;
+           if (j > object_X_Max)
+             object_X_Max = j;
+           if (i < object_Y_Min)
+             object_Y_Min = i;
+           if (i > object_Y_Max)
+             object_Y_Max = i;
+         }
+       }
+     }
+
+     //Send values to NetworkTables
+     xMaxEntry.SetDouble(object_X_Max);
+     xMinEntry.SetDouble(object_X_Min);
+     yMaxEntry.SetDouble(object_Y_Max);
+     yMinEntry.SetDouble(object_Y_Min);
+     //Calculate area
+     area = (object_X_Max-object_X_Min) * (object_Y_Max-object_Y_Min);
+     std::cout << area << std::endl;
+     std::cout << object_X_Max << std::endl;
+     std::cout << object_X_Min << std::endl;
+     objectWidth = sqrt(area);
+     //it is the average of the centres of object
+     cX = object_X_Max - object_X_Min;
+     cY = object_Y_Max - object_Y_Min;
+     std::cout << cX << std::endl;
+     std::cout << cY << std::endl;
+
+     output3.PutFrame(mat4);
+     xLenEntry.SetDouble(cX);
+     yLenEntry.SetDouble(cY);
+     areaEntry.SetDouble(area);
+     objectWidthEntry.SetDouble(objectWidth);
+    }
+  }).detach();
   }
 
   // loop forever
