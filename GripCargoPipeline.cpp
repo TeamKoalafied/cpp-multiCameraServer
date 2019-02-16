@@ -1,6 +1,6 @@
 #include "GripCargoPipeline.h"
 
-namespace grip {
+namespace cargoGrip {
 
 GripCargoPipeline::GripCargoPipeline() {
 }
@@ -164,4 +164,3 @@ cv::Mat* GripCargoPipeline::GetRgbThresholdOutput(){
 
 
 } // end grip namespace
-

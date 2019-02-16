@@ -1,6 +1,6 @@
 #include "GripHatchPipeline.h"
 
-namespace grip {
+namespace hatchGrip {
 
 GripHatchPipeline::GripHatchPipeline() {
 }
@@ -110,4 +110,3 @@ cv::Mat* GripHatchPipeline::GetHsvThresholdOutput(){
 
 
 } // end grip namespace
-
