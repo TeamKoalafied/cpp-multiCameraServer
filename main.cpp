@@ -207,12 +207,9 @@ class MyPipeline : public frc::VisionPipeline {
 void cargoGripThread(){
   const int kWidth = 320;
   const int kHeight = 240;
-
   std::vector<cs::VideoSource> cameras;
   for (auto&& cameraConfig : cameraConfigs)
     cameras.emplace_back(StartCamera(cameraConfig));
-  cameras[0].SetResolution(kWidth, kHeight);
-  cameras[1].SetResolution(kWidth, kHeight);
 
   int object_X_Max=0;
   int object_Y_Max=0;
@@ -325,13 +322,10 @@ void cargoGripThread(){
 void hatchGripThread(){
   const int kWidth = 320;
   const int kHeight = 240;
-
   std::vector<cs::VideoSource> cameras;
   for (auto&& cameraConfig : cameraConfigs)
     cameras.emplace_back(StartCamera(cameraConfig));
 
-    cameras[0].SetResolution(kWidth, kHeight);
-    cameras[1].SetResolution(kWidth, kHeight);
   int object_X_Max=0;
   int object_Y_Max=0;
   int object_Y_Min=0;
@@ -445,13 +439,9 @@ void hatchGripThread(){
 void stripGripThread(){
   const int kWidth = 320;
   const int kHeight = 240;
-
   std::vector<cs::VideoSource> cameras;
   for (auto&& cameraConfig : cameraConfigs)
     cameras.emplace_back(StartCamera(cameraConfig));
-
-    cameras[0].SetResolution(kWidth, kHeight);
-    cameras[1].SetResolution(kWidth, kHeight);
 
   int object_X_Max=0;
   int object_Y_Max=0;
@@ -561,13 +551,10 @@ void stripGripThread(){
 void crosshairsCroppedThread(){
   const int kWidth = 320;
   const int kHeight = 240;
-
   std::vector<cs::VideoSource> cameras;
   for (auto&& cameraConfig : cameraConfigs)
     cameras.emplace_back(StartCamera(cameraConfig));
 
-    cameras[0].SetResolution(kWidth, kHeight);
-    cameras[1].SetResolution(kWidth, kHeight);
   cs::CvSink wideFovSink = frc::CameraServer::GetInstance()->GetVideo(cameras[0]);
   cs::CvSink crosshairsSink = frc::CameraServer::GetInstance()->GetVideo(cameras[1]);
 
@@ -632,13 +619,20 @@ int main(int argc, char* argv[]) {
   for (auto&& cameraConfig : cameraConfigs)
     cameras.emplace_back(StartCamera(cameraConfig));
 
+  cameras[0].SetResolution(320, 240);
+  cameras[1].SetResolution(320, 240);
+
   // start image processing on camera 0 if present
-  while (true){ // WARNING: IF NO CAMERAS, THIS WILL NOT WORK, ORIGINAL if camera size over zero { RELIED ON ABOVE CODE SNIPPET
-    std::thread t0 (crosshairsCroppedThread);
-    std::thread t1 (cargoGripThread);
-    std::thread t2 (hatchGripThread);
-    std::thread t3 (stripGripThread);
-  }
+  // WARNING: IF NO CAMERAS, THIS WILL NOT WORK, ORIGINAL if camera size over zero { RELIED ON ABOVE CODE SNIPPET
+  std::thread t0 (crosshairsCroppedThread);
+  std::thread t1 (cargoGripThread);
+  std::thread t2 (hatchGripThread);
+  std::thread t3 (stripGripThread);
+
+  t0.join();
+  t1.join();
+  t2.join();
+  t3.join();
 
   // loop forever
   for (;;) std::this_thread::sleep_for(std::chrono::seconds(10));

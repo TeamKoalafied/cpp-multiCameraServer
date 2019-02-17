@@ -1,0 +1,73 @@
+CS: LifeCam: Connecting to USB camera on /dev/video0
+
+CS: ERROR: ioctl VIDIOC_S_FMT failed at UsbCameraImpl.cpp:777: Device or resource busy (UsbUtil.cpp:156)
+
+CS: WARNING: LifeCam: could not set format 1 res 160x120 (UsbCameraImpl.cpp:779)
+
+CS: ERROR: ioctl VIDIOC_S_PARM failed at UsbCameraImpl.cpp:798: Device or resource busy (UsbUtil.cpp:156)
+
+CS: WARNING: LifeCam: could not set FPS to 30 (UsbCameraImpl.cpp:799)
+
+CS: ERROR: ioctl VIDIOC_REQBUFS failed at UsbCameraImpl.cpp:513: Device or resource busy (UsbUtil.cpp:156)
+
+CS: WARNING: LifeCam: could not allocate buffers (UsbCameraImpl.cpp:514)
+
+CS: LifeCam: Connecting to USB camera on /dev/video0
+CS: ERROR: ioctl VIDIOC_S_FMT failed at UsbCameraImpl.cpp:777: Device or resource busy (UsbUtil.cpp:156)
+CS: WARNING: LifeCam: could not set format 1 res 160x120 (UsbCameraImpl.cpp:779)
+CS: ERROR: ioctl VIDIOC_S_PARM failed at UsbCameraImpl.cpp:798: Device or resource busy (UsbUtil.cpp:156)
+CS: WARNING: LifeCam: could not set FPS to 30 (UsbCameraImpl.cpp:799)
+CS: ERROR: ioctl VIDIOC_REQBUFS failed at UsbCameraImpl.cpp:513: Device or resource busy (UsbUtil.cpp:156)
+CS: WARNING: LifeCam: could not allocate buffers (UsbCameraImpl.cpp:514)
+
+CS: LifeCam: Connecting to USB camera on /dev/video0
+CS: ERROR: ioctl VIDIOC_S_FMT failed at UsbCameraImpl.cpp:777: Device or resource busy (UsbUtil.cpp:156)
+CS: WARNING: LifeCam: could not set format 1 res 160x120 (UsbCameraImpl.cpp:779)
+CS: ERROR: ioctl VIDIOC_S_PARM failed at UsbCameraImpl.cpp:798: Device or resource busy (UsbUtil.cpp:156)
+CS: WARNING: LifeCam: could not set FPS to 30 (UsbCameraImpl.cpp:799)
+CS: ERROR: ioctl VIDIOC_REQBUFS failed at UsbCameraImpl.cpp:513: Device or resource busy (UsbUtil.cpp:156)
+CS: WARNING: LifeCam: could not allocate buffers (UsbCameraImpl.cpp:514)
+
+CS: wide: Connecting to USB camera on /dev/video1
+
+CS: ERROR: ioctl VIDIOC_S_FMT failed at UsbCameraImpl.cpp:777: Device or resource busy (UsbUtil.cpp:156)
+CS: WARNING: wide: could not set format 2 res 320x240 (UsbCameraImpl.cpp:779)
+CS: ERROR: ioctl VIDIOC_S_PARM failed at UsbCameraImpl.cpp:798: Device or resource busy (UsbUtil.cpp:156)
+CS: WARNING: wide: could not set FPS to 30 (UsbCameraImpl.cpp:799)
+
+CS: ERROR: ioctl VIDIOC_REQBUFS failed at UsbCameraImpl.cpp:513: Device or resource busy (UsbUtil.cpp:156)
+CS: WARNING: wide: could not allocate buffers (UsbCameraImpl.cpp:514)
+
+CS: wide: Connecting to USB camera on /dev/video1
+
+CS: ERROR: ioctl VIDIOC_S_FMT failed at UsbCameraImpl.cpp:777: Device or resource busy (UsbUtil.cpp:156)
+CS: WARNING: wide: could not set format 2 res 320x240 (UsbCameraImpl.cpp:779)
+CS: ERROR: ioctl VIDIOC_S_PARM failed at UsbCameraImpl.cpp:798: Device or resource busy (UsbUtil.cpp:156)
+CS: WARNING: wide: could not set FPS to 30 (UsbCameraImpl.cpp:799)
+
+CS: ERROR: ioctl VIDIOC_REQBUFS failed at UsbCameraImpl.cpp:513: Device or resource busy (UsbUtil.cpp:156)
+
+CS: WARNING: wide: could not allocate buffers (UsbCameraImpl.cpp:514)
+
+CS: wide: Connecting to USB camera on /dev/video1
+
+CS: ERROR: ioctl VIDIOC_S_FMT failed at UsbCameraImpl.cpp:777: Device or resource busy (UsbUtil.cpp:156)
+CS: WARNING: wide: could not set format 2 res 320x240 (UsbCameraImpl.cpp:779)
+CS: ERROR: ioctl VIDIOC_S_PARM failed at UsbCameraImpl.cpp:798: Device or resource busy (UsbUtil.cpp:156)
+
+CS: WARNING: wide: could not set FPS to 30 (UsbCameraImpl.cpp:799)
+
+CS: wide: Connecting to USB camera on /dev/video1
+
+CS: ERROR: ioctl VIDIOC_S_FMT failed at UsbCameraImpl.cpp:777: Device or resource busy (UsbUtil.cpp:156)
+CS: WARNING: wide: could not set format 2 res 320x240 (UsbCameraImpl.cpp:779)
+CS: ERROR: ioctl VIDIOC_S_PARM failed at UsbCameraImpl.cpp:798: Device or resource busy (UsbUtil.cpp:156)
+CS: WARNING: wide: could not set FPS to 30 (UsbCameraImpl.cpp:799)
+
+CS: ERROR: ioctl VIDIOC_REQBUFS failed at UsbCameraImpl.cpp:513: Device or resource busy (UsbUtil.cpp:156)
+
+CS: WARNING: wide: could not allocate buffers (UsbCameraImpl.cpp:514)
+
+CS: ERROR: ioctl VIDIOC_REQBUFS failed at UsbCameraImpl.cpp:513: Device or resource busy (UsbUtil.cpp:156)
+
+CS: WARNING: wide: could not allocate buffers (UsbCameraImpl.cpp:514)
