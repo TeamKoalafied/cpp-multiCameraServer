@@ -208,8 +208,8 @@ void cargoGripThread(){
   const int kWidth = 320;
   const int kHeight = 240;
   std::vector<cs::VideoSource> cameras;
-  for (auto&& cameraConfig : cameraConfigs)
-    cameras.emplace_back(StartCamera(cameraConfig));
+  // for (auto&& cameraConfig : cameraConfigs)
+  //   cameras.emplace_back(StartCamera(cameraConfig));
 
   int object_X_Max=0;
   int object_Y_Max=0;
@@ -323,8 +323,8 @@ void hatchGripThread(){
   const int kWidth = 320;
   const int kHeight = 240;
   std::vector<cs::VideoSource> cameras;
-  for (auto&& cameraConfig : cameraConfigs)
-    cameras.emplace_back(StartCamera(cameraConfig));
+  // for (auto&& cameraConfig : cameraConfigs)
+  //   cameras.emplace_back(StartCamera(cameraConfig));
 
   int object_X_Max=0;
   int object_Y_Max=0;
@@ -440,8 +440,8 @@ void stripGripThread(){
   const int kWidth = 320;
   const int kHeight = 240;
   std::vector<cs::VideoSource> cameras;
-  for (auto&& cameraConfig : cameraConfigs)
-    cameras.emplace_back(StartCamera(cameraConfig));
+  // for (auto&& cameraConfig : cameraConfigs)
+  //   cameras.emplace_back(StartCamera(cameraConfig));
 
   int object_X_Max=0;
   int object_Y_Max=0;
@@ -552,8 +552,8 @@ void crosshairsCroppedThread(){
   const int kWidth = 320;
   const int kHeight = 240;
   std::vector<cs::VideoSource> cameras;
-  for (auto&& cameraConfig : cameraConfigs)
-    cameras.emplace_back(StartCamera(cameraConfig));
+  // for (auto&& cameraConfig : cameraConfigs)
+  //   cameras.emplace_back(StartCamera(cameraConfig));
 
   cs::CvSink wideFovSink = frc::CameraServer::GetInstance()->GetVideo(cameras[0]);
   cs::CvSink crosshairsSink = frc::CameraServer::GetInstance()->GetVideo(cameras[1]);
