@@ -626,11 +626,11 @@ int main(int argc, char* argv[]) {
     wpi::outs() << "Setting up NetworkTables client for team " << team << '\n';
     ntinst.StartClientTeam(team);
   }
-  //
-  // // start cameras
-  // std::vector<cs::VideoSource> cameras;
-  // for (auto&& cameraConfig : cameraConfigs)
-  //   cameras.emplace_back(StartCamera(cameraConfig));
+
+  // start cameras
+  std::vector<cs::VideoSource> cameras;
+  for (auto&& cameraConfig : cameraConfigs)
+    cameras.emplace_back(StartCamera(cameraConfig));
 
   // start image processing on camera 0 if present
   while (true){ // WARNING: IF NO CAMERAS, THIS WILL NOT WORK, ORIGINAL if camera size over zero { RELIED ON ABOVE CODE SNIPPET
