@@ -24,3 +24,6 @@ CS: LifeCam: Connecting to USB camera on /dev/video0
 CS: LifeCam: Connecting to USB camera on /dev/video0
     CS: LifeCam: set format 1 res 320x240
     CS: LifeCam: set FPS to 30
+
+
+NEW one
