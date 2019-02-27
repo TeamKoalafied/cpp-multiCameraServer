@@ -259,6 +259,8 @@ int main(int argc, char* argv[]) {
     int centreY; //centre y
     int objectWidth = 0;
     int objectArea = 0;
+    int xCrosshairOffset = 0;
+    int yCrosshairOffset = 0;
     double objectOffset = 0.0; // this value will output 0 at the leftmost pixel to 1 at the right-most pixel
     double objectAngle = 0.0; //will give an angle from 0 to half of the fov, will be positive on the right hand side, left side is negative
     double distanceFromObject = 0.0;
@@ -296,59 +298,32 @@ int main(int argc, char* argv[]) {
     int strip_ObjectArea = 0;
     */
 
-    nt::NetworkTableEntry xMaxEntryCargo;
-    nt::NetworkTableEntry xMinEntryCargo;
-    nt::NetworkTableEntry yMaxEntryCargo;
-    nt::NetworkTableEntry yMinEntryCargo;
-    nt::NetworkTableEntry xLenEntryCargo;
-    nt::NetworkTableEntry yLenEntryCargo;
-    nt::NetworkTableEntry areaEntryCargo;
-    nt::NetworkTableEntry objectWidthEntryCargo;
-    nt::NetworkTableEntry xMaxEntryHatch;
-    nt::NetworkTableEntry xMinEntryHatch;
-    nt::NetworkTableEntry yMaxEntryHatch;
-    nt::NetworkTableEntry yMinEntryHatch;
-    nt::NetworkTableEntry xLenEntryHatch;
-    nt::NetworkTableEntry yLenEntryHatch;
-    nt::NetworkTableEntry areaEntryHatch;
-    nt::NetworkTableEntry objectWidthEntryHatch;
-    nt::NetworkTableEntry xMaxEntryStrip;
-    nt::NetworkTableEntry xMinEntryStrip;
-    nt::NetworkTableEntry yMaxEntryStrip;
-    nt::NetworkTableEntry yMinEntryStrip;
-    nt::NetworkTableEntry xLenEntryStrip;
-    nt::NetworkTableEntry yLenEntryStrip;
-    nt::NetworkTableEntry areaEntryStrip;
-    nt::NetworkTableEntry objectWidthEntryStrip;
+    nt::NetworkTableEntry distanceCargoEntry;
+    nt::NetworkTableEntry offsetCargoEntry;
+    nt::NetworkTableEntry objectAngleCargoEntry;
+    nt::NetworkTableEntry distanceHatchEntry;
+    nt::NetworkTableEntry offsetHatchEntry;
+    nt::NetworkTableEntry objectAngleHatchEntry;
+    nt::NetworkTableEntry distanceStripEntry;
+    nt::NetworkTableEntry offsetStripEntry;
+    nt::NetworkTableEntry objectAngleStripEntry;
 
     auto inst = nt::NetworkTableInstance::GetDefault();
     auto cargoTable = inst.GetTable("CargoOutputValues");
     auto hatchTable = inst.GetTable("HatchOutputValues");
     auto stripTable = inst.GetTable("StripOutputValues");
 
-    xLenEntryCargo = cargoTable -> GetEntry("xLenCargo");
-    yLenEntryCargo = cargoTable -> GetEntry("yLenCargo");
-    xMaxEntryCargo = cargoTable -> GetEntry("xMaxCargo");
-    xMinEntryCargo = cargoTable -> GetEntry("xMinCargo");
-    yMaxEntryCargo = cargoTable -> GetEntry("yMaxCargo");
-    yMinEntryCargo = cargoTable -> GetEntry("yMinCargo");
-    areaEntryCargo = cargoTable -> GetEntry("areaCargo");
-    objectWidthEntryCargo = cargoTable -> GetEntry("objectWidthCargo");
-    xLenEntryHatch = hatchTable -> GetEntry("xLenHatch");
-    yLenEntryHatch = hatchTable -> GetEntry("yLenHatch");
-    xMaxEntryHatch = hatchTable -> GetEntry("xMaxHatch");
-    xMinEntryHatch = hatchTable -> GetEntry("xMinHatch");
-    yMaxEntryHatch = hatchTable -> GetEntry("yMaxHatch");
-    yMinEntryHatch = hatchTable -> GetEntry("yMinHatch");
-    areaEntryHatch = hatchTable -> GetEntry("areaHatch");
-    objectWidthEntryHatch = hatchTable -> GetEntry("objectWidthHatch");
-    yLenEntryStrip = stripTable -> GetEntry("yLenStrip");
-    xMaxEntryStrip = stripTable -> GetEntry("xMaxStrip");
-    xMinEntryStrip = stripTable -> GetEntry("xMinStrip");
-    yMaxEntryStrip = stripTable -> GetEntry("yMaxStrip");
-    yMinEntryStrip = stripTable -> GetEntry("yMinStrip");
-    areaEntryStrip = stripTable -> GetEntry("areaStrip");
-    objectWidthEntryStrip = stripTable -> GetEntry("objectWidthStrip");
+    distanceCargoEntry = cargoTable -> GetEntry("distanceCargo");
+    offsetCargoEntry = cargoTable -> GetEntry("offsetCargo");
+    objectAngleCargoEntry = cargoTable -> GetEntry("objectAngleCargo");
+    distanceHatchEntry = hatchTable -> GetEntry("distanceHatch");
+    offsetHatchEntry = hatchTable -> GetEntry("offsetHatch");
+    objectAngleHatchEntry = hatchTable -> GetEntry("objectAngleHatch");
+    distanceStripEntry = stripTable -> GetEntry("distanceStrip");
+    offsetStripEntry = stripTable -> GetEntry("offsetStrip");
+    objectAngleStripEntry = stripTable -> GetEntry("objectAngleStrip");
+
+
 
     cameras[0].SetResolution(kWidth, kHeight);
     cameras[1].SetResolution(kWidth, kHeight);
@@ -370,7 +345,7 @@ int main(int argc, char* argv[]) {
     cv::Mat wideFovMat;
     cv::Mat crosshairsMat;
     cv::Mat pipelineMat;
-//declaring grip pipelines
+    //declaring grip pipelines
     cargoGrip::GripCargoPipeline* cargoPipeline = new cargoGrip::GripCargoPipeline();
     hatchGrip::GripHatchPipeline* hatchPipeline = new hatchGrip::GripHatchPipeline();
     stripGrip::GripStripPipeline* stripPipeline = new stripGrip::GripStripPipeline();
@@ -387,18 +362,21 @@ int main(int argc, char* argv[]) {
       }
       if (crosshairsSink.GrabFrame(crosshairsMat) == 0) {
         // Send the output the error.
-        crosshairsOutput.NotifyError(crosshairsSink.GetError());
+        croppedOutput.NotifyError(crosshairsSink.GetError());
         // skip the rest of the current iteration
         continue;
       }
       // Put a rectangle on the image (x, y, width, height)
       cv::Rect rectangle = cv::Rect(0,80,kWidth,80);
       wideFovMat = wideFovMat(rectangle);
+
+      xCrosshairOffset = 0;
+      yCrosshairOffset = 0;
       // add the crosshairs
-      cv::line(crosshairsMat, cv::Point(160, 80), cv::Point(160,105), CV_RGB(255,0,0));
-      cv::line(crosshairsMat, cv::Point(160, 135), cv::Point(160,160), CV_RGB(255,0,0));
-      cv::line(crosshairsMat, cv::Point(120, 120), cv::Point(145,120), CV_RGB(255,0,0));
-      cv::line(crosshairsMat, cv::Point(175, 120), cv::Point(200,120), CV_RGB(255,0,0));
+      cv::line(crosshairsMat, cv::Point(160 + xCrosshairOffset, 80 + yCrosshairOffset), cv::Point(160 + xCrosshairOffset,105 + yCrosshairOffset), CV_RGB(255,0,0));    // vertical
+      cv::line(crosshairsMat, cv::Point(160 + xCrosshairOffset, 135 + yCrosshairOffset), cv::Point(160 + xCrosshairOffset,160 + yCrosshairOffset), CV_RGB(255,0,0));   // vertical
+      cv::line(crosshairsMat, cv::Point(120 + xCrosshairOffset, 120 + yCrosshairOffset), cv::Point(145 + xCrosshairOffset,120 + yCrosshairOffset), CV_RGB(255,0,0));   // horizontal
+      cv::line(crosshairsMat, cv::Point(175 + xCrosshairOffset, 120 + yCrosshairOffset), cv::Point(200 + xCrosshairOffset,120 + yCrosshairOffset), CV_RGB(255,0,0));   // horizontal
       // Give the output stream a new image to display
       croppedOutput.PutFrame(wideFovMat);
       crosshairsOutput.PutFrame(crosshairsMat);
@@ -409,7 +387,7 @@ int main(int argc, char* argv[]) {
       //2nd GripHatchPipeline
       //3rd GripStripPipeline
 
-
+      //
       cargoPipeline->Process(wideFovMat);
       pipelineMat = *(cargoPipeline->GetRgbThresholdOutput());
       //Vision pixel process
@@ -419,6 +397,12 @@ int main(int argc, char* argv[]) {
       };
       object_X_Max=0;
       object_Y_Max=0;
+      objectArea = 0;
+      objectWidth = 0;
+      centreX = 0;
+      centreY = 0;
+      distanceFromObject = 0;
+      objectAngle = 0;
       object_Y_Min=pipelineMat.rows-1;
       object_X_Min=pipelineMat.cols-1;
       for(int i = 0; i < pipelineMat.rows; i++)
@@ -440,17 +424,13 @@ int main(int argc, char* argv[]) {
         }
       }
 
-      //Send values to NetworkTables
-      xMaxEntryCargo.SetDouble(object_X_Max);
-      xMinEntryCargo.SetDouble(object_X_Min);
-      yMaxEntryCargo.SetDouble(object_Y_Max);
-      yMinEntryCargo.SetDouble(object_Y_Min);
       //Calculate area
       objectArea = (object_X_Max-object_X_Min) * (object_Y_Max-object_Y_Min);
       std::cout << objectArea << std::endl;
       std::cout << object_X_Max << std::endl;
       std::cout << object_X_Min << std::endl;
       objectWidth = sqrt(objectArea);
+      if (objectWidth != 0){
       distanceFromObject = (widthCargo)/(objectWidth/320);
 
       //it is the average of the centres of object
@@ -462,18 +442,19 @@ int main(int argc, char* argv[]) {
       objectAngle = objectAngle*(k_WCameraHFOV); //will give an angle from 0 to half of the fov, will be positive on the right hand side, left side is negative
       //show text of variables
       //cv::putText(pipelineMat, "Centre is: (" << std::to_string(centreX) << ":" << std::to_string(centreY) << ")" , cvPoint(50,100), FONT_HERSHEY_SIMPLEX, 1, (0,200,200), 4);
+      distanceCargoEntry.SetDouble(distanceFromObject);
+      offsetCargoEntry.SetDouble(objectOffset);
+      objectAngleCargoEntry.SetDouble(objectOffset);
+      }
+
+      // pipelineOutputCargo.PutFrame(pipelineMat);
 
 
-      pipelineOutputCargo.PutFrame(pipelineMat);
-      xLenEntryCargo.SetDouble(centreX);
-      yLenEntryCargo.SetDouble(centreY);
-      areaEntryCargo.SetDouble(objectArea);
-      objectWidthEntryCargo.SetDouble(objectWidth);
 
       //reset constants
       //hatch
-      hatchPipeline->Process(wideFovMat);
-      pipelineMat = *(hatchPipeline->GetHsvThresholdOutput());
+      // hatchPipeline->Process(wideFovMat);
+      // pipelineMat = *(hatchPipeline->GetHsvThresholdOutput());
       //Vision pixel process
     /*  struct Pixbgr
       {
@@ -482,6 +463,12 @@ int main(int argc, char* argv[]) {
 
       object_X_Max=0;
       object_Y_Max=0;
+      objectArea = 0;
+      objectWidth = 0;
+      centreX = 0;
+      centreY = 0;
+      distanceFromObject = 0;
+      objectAngle = 0;
       object_Y_Min=pipelineMat.rows-1;
       object_X_Min=pipelineMat.cols-1;
       for(int i = 0; i < pipelineMat.rows; i++)
@@ -503,17 +490,12 @@ int main(int argc, char* argv[]) {
         }
       }
 
-      //Send values to NetworkTables
-      xMaxEntryHatch.SetDouble(object_X_Max);
-      xMinEntryHatch.SetDouble(object_X_Min);
-      yMaxEntryHatch.SetDouble(object_Y_Max);
-      yMinEntryHatch.SetDouble(object_Y_Min);
+
       //Calculate area
-      objectArea = (object_X_Max-object_X_Min) * (object_Y_Max-object_Y_Min);
-      std::cout << objectArea << std::endl;
       std::cout << object_X_Max << std::endl;
       std::cout << object_X_Min << std::endl;
-      objectWidth = sqrt(objectArea);
+      objectWidth = object_X_Max-object_X_Min;
+       if (objectWidth != 0){
       distanceFromObject = (widthHatch)/(objectWidth/320);
 
 
@@ -527,17 +509,17 @@ int main(int argc, char* argv[]) {
       std::cout << centreY << std::endl;
       objectOffset = (centreX/k_HResolution) - 0.5; // this value will output 0 at the leftmost pixel to 1 at the right-most pixel,
       objectAngle = objectAngle*(k_WCameraHFOV); //will give an angle from 0 to half of the fov, will be positive on the right hand side, left side is negative
+      distanceHatchEntry.SetDouble(distanceFromObject);
+      offsetHatchEntry.SetDouble(objectOffset);
+      objectAngleHatchEntry.SetDouble(objectOffset);
+      // pipelineOutputHatch.PutFrame(pipelineMat);
 
-      pipelineOutputHatch.PutFrame(pipelineMat);
-      xLenEntryHatch.SetDouble(centreX);
-      yLenEntryHatch.SetDouble(centreY);
-      areaEntryHatch.SetDouble(objectArea);
-      objectWidthEntryHatch.SetDouble(objectWidth);
+  }
 
       //start of Strip pipeline
-      stripPipeline->Process(wideFovMat);
+      stripPipeline->Process(crosshairsMat);
       pipelineMat = *(stripPipeline->GetHsvThresholdOutput());
-      //Vision pixel process
+      // Vision pixel process
     /*  struct Pixbgr
       {
         unsigned char b:8;
@@ -545,6 +527,13 @@ int main(int argc, char* argv[]) {
 
       object_X_Max=0;
       object_Y_Max=0;
+      objectArea = 0;
+      objectWidth = 0;
+      centreX = 0;
+      centreY = 0;
+      distanceFromObject = 0;
+      objectAngle = 0;
+
       object_Y_Min=pipelineMat.rows-1;
       object_X_Min=pipelineMat.cols-1;
       for(int i = 0; i < pipelineMat.rows; i++)
@@ -566,19 +555,15 @@ int main(int argc, char* argv[]) {
         }
       }
 
-      //Send values to NetworkTables
-      xMaxEntryStrip.SetDouble(object_X_Max);
-      xMinEntryStrip.SetDouble(object_X_Min);
-      yMaxEntryStrip.SetDouble(object_Y_Max);
-      yMinEntryStrip.SetDouble(object_Y_Min);
+
       //show text of variables
       //cv::putText(pipelineMat, "Centre is: (" + std::to_string(centreX) + ":" + std::to_string(centreY) + ")" , cvPoint(50,100), FONT_HERSHEY_SIMPLEX, 1, (0,200,200), 4);
-      //Calculate area
-      objectArea = (object_X_Max-object_X_Min) * (object_Y_Max-object_Y_Min);
-      std::cout << objectArea << std::endl;
       std::cout << object_X_Max << std::endl;
       std::cout << object_X_Min << std::endl;
-      objectWidth = sqrt(objectArea);
+      objectWidth = object_X_Max-object_X_Min;
+
+      if (objectWidth != 0){
+
       distanceFromObject = (widthStrip)/(objectWidth/320);
       std::cout<< "Distance from strip "<< distanceFromObject << std::endl;
       //it is the average of the centres of object
@@ -588,13 +573,11 @@ int main(int argc, char* argv[]) {
       std::cout << centreY << std::endl;
       objectOffset = (centreX/k_HResolution) - 0.5; // this value will output 0 at the leftmost pixel to 1 at the right-most pixel,
       objectAngle = objectAngle*(k_WCameraHFOV); //will give an angle from 0 to half of the fov, will be positive on the right hand side, left side is negative
+      distanceStripEntry.SetDouble(distanceFromObject);
+      offsetStripEntry.SetDouble(objectOffset);
+      objectAngleStripEntry.SetDouble(objectOffset);
       pipelineOutputStrip.PutFrame(pipelineMat);
-      xLenEntryStrip.SetDouble(centreX);
-      yLenEntryStrip.SetDouble(centreY);
-      areaEntryStrip.SetDouble(objectArea);
-      objectWidthEntryStrip.SetDouble(objectWidth);
-
-
+  }
       //reset constants
 
      }

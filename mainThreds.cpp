@@ -655,9 +655,9 @@ int main(int argc, char* argv[]) {
   std::thread t2 (hatchGripThread);
   std::thread t3 (stripGripThread);
 
-  t0.join();
-  t1.join();
-  t2.join();
-  t3.join();
+  t0.detach();
+  t1.detach();
+  t2.detach();
+  t3.detach();
 
 }

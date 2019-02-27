@@ -1,0 +1,108 @@
+{
+    "fps": 30,
+    "height": 240,
+    "pixel format": "yuyv",
+    "properties": [
+        {
+            "name": "connect_verbose",
+            "value": 1
+        },
+        {
+            "name": "raw_brightness",
+            "value": -64
+        },
+        {
+            "name": "brightness",
+            "value": 0
+        },
+        {
+            "name": "raw_contrast",
+            "value": 64
+        },
+        {
+            "name": "contrast",
+            "value": 100
+        },
+        {
+            "name": "raw_saturation",
+            "value": 57
+        },
+        {
+            "name": "saturation",
+            "value": 45
+        },
+        {
+            "name": "raw_hue",
+            "value": -17
+        },
+        {
+            "name": "hue",
+            "value": 28
+        },
+        {
+            "name": "white_balance_temperature_auto",
+            "value": false
+        },
+        {
+            "name": "gamma",
+            "value": 104
+        },
+        {
+            "name": "raw_gain",
+            "value": 16
+        },
+        {
+            "name": "gain",
+            "value": 16
+        },
+        {
+            "name": "power_line_frequency",
+            "value": 1
+        },
+        {
+            "name": "white_balance_temperature",
+            "value": 4708
+        },
+        {
+            "name": "raw_sharpness",
+            "value": 1
+        },
+        {
+            "name": "sharpness",
+            "value": 32
+        },
+        {
+            "name": "backlight_compensation",
+            "value": 1
+        },
+        {
+            "name": "exposure_auto",
+            "value": 1
+        },
+        {
+            "name": "raw_exposure_absolute",
+            "value": 150
+        },
+        {
+            "name": "exposure_absolute",
+            "value": 3
+        },
+        {
+            "name": "exposure_auto_priority",
+            "value": false
+        },
+        {
+            "name": "pan_absolute",
+            "value": 0
+        },
+        {
+            "name": "tilt_absolute",
+            "value": 0
+        },
+        {
+            "name": "zoom_absolute",
+            "value": 0
+        }
+    ],
+    "width": 320
+}
