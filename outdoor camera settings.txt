@@ -1,0 +1,29 @@
+connect_verbose: 1
+
+brightness: 40
+
+contrast: 50
+
+saturation: 40
+
+hue: 51
+
+white_balance_temperature_auto
+
+gamma: 72
+
+gain: 0
+
+power_line_frequency: 50 Hz
+
+white_balance_temperature: 3351
+
+sharpness: 30
+
+backlight_compensation: 2
+
+exposure_auto: Aperture Priority Mode
+
+exposure_absolute: 1
+
+exposure_auto_priority: on

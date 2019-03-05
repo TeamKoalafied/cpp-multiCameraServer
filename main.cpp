@@ -211,6 +211,84 @@ class MyPipeline : public frc::VisionPipeline {
 */
 }  // namespace
 
+//threads begin here
+void frontCamera() {
+    std::vector<cs::VideoSource> cameras;
+    cameras[0].SetResolution(320,240);
+    cs::CvSink frontSink = frc::CameraServer::GetInstance()->GetVideo(cameras[0]);
+    cs::CvSource croppedFrontOutput =
+        frc::CameraServer::GetInstance()->PutVideo("Front Cropped", 320, 80);
+
+    cv::Mat croppedFrontMat;
+
+    while (true) {
+        if (frontSink.GrabFrame(croppedFrontMat) == 0) {
+          // Send the output the error.
+          croppedFrontOutput.NotifyError(frontSink.GetError());
+          // skip the rest of the current iteration
+          continue;
+        }
+
+        cv::Rect rectangle = cv::Rect(0,80,320,80);
+        croppedFrontMat = croppedFrontMat(rectangle);
+
+         croppedFrontOutput.PutFrame(croppedFrontMat);
+    }
+}
+
+void backCamera() {
+    std::vector<cs::VideoSource> cameras;
+    cameras[1].SetResolution(320,240);
+    cs::CvSink backSink = frc::CameraServer::GetInstance()->GetVideo(cameras[1]);
+    cs::CvSource croppedBackOutput =
+        frc::CameraServer::GetInstance()->PutVideo("Back Cropped", 320, 80);
+
+    cv::Mat croppedBackMat;
+
+    while (true) {
+        if (backSink.GrabFrame(croppedBackMat) == 0) {
+          // Send the output the error.
+          croppedBackOutput.NotifyError(backSink.GetError());
+          // skip the rest of the current iteration
+          continue;
+        }
+
+        cv::Rect rectangle = cv::Rect(0,80,320,80);
+        croppedBackMat = croppedBackMat(rectangle);
+
+        croppedBackOutput.PutFrame(croppedBackMat);
+    }
+}
+
+void lifeCam() {
+    std::vector<cs::VideoSource> cameras;
+    cameras[1].SetResolution(320,240);
+    cs::CvSink lifeCamSink = frc::CameraServer::GetInstance()->GetVideo(cameras[1]);
+    cs::CvSource crosshairsOutput =
+        frc::CameraServer::GetInstance()->PutVideo("Crosshairs", 320, 80);
+
+    cv::Mat crosshairsMat;
+
+    while (true){
+        if (lifeCamSink.GrabFrame(crosshairsMat) == 0) {
+          // Send the output the error.
+          crosshairsOutput.NotifyError(lifeCamSink.GetError());
+          // skip the rest of the current iteration
+          continue;
+        }
+
+        int xCrosshairOffset = 0;
+        int yCrosshairOffset = 0;
+        // add the crosshairs
+        cv::line(crosshairsMat, cv::Point(160 + xCrosshairOffset, 80 + yCrosshairOffset), cv::Point(160 + xCrosshairOffset,105 + yCrosshairOffset), CV_RGB(255,0,0));    // vertical
+        cv::line(crosshairsMat, cv::Point(160 + xCrosshairOffset, 135 + yCrosshairOffset), cv::Point(160 + xCrosshairOffset,160 + yCrosshairOffset), CV_RGB(255,0,0));   // vertical
+        cv::line(crosshairsMat, cv::Point(120 + xCrosshairOffset, 120 + yCrosshairOffset), cv::Point(145 + xCrosshairOffset,120 + yCrosshairOffset), CV_RGB(255,0,0));   // horizontal
+        cv::line(crosshairsMat, cv::Point(175 + xCrosshairOffset, 120 + yCrosshairOffset), cv::Point(200 + xCrosshairOffset,120 + yCrosshairOffset), CV_RGB(255,0,0));   // horizontal
+        // Give the output stream a new image to display
+        crosshairsOutput.PutFrame(crosshairsMat);
+    }
+}
+
 int main(int argc, char* argv[]) {
   if (argc >= 2) configFile = argv[1];
 
@@ -227,362 +305,99 @@ int main(int argc, char* argv[]) {
     ntinst.StartClientTeam(team);
   }
 
-  // start cameras
-  std::vector<cs::VideoSource> cameras;
-  for (auto&& cameraConfig : cameraConfigs)
-    cameras.emplace_back(StartCamera(cameraConfig));
+      std::vector<cs::VideoSource> cameras;
+      for (auto&& cameraConfig : cameraConfigs)
+        cameras.emplace_back(StartCamera(cameraConfig));
+      // NetworkTableEntry frontOrBack;
+      // NetworkTable visionTable = ntinst.getTable("visionTable");
 
-  // start image processing on camera 0 if present
-  if (cameras.size() >= 1) {
-    std::thread([&] {
-      // frc::VisionRunner<MyPipeline> runner(cameras[0], new MyPipeline(),
-      //                                      [&](MyPipeline &pipeline) {
-      //
-      // });
-      /* something like this for GRIP:
-      frc::VisionRunner<MyPipeline> runner(cameras[0], new grip::GripPipeline(),
-                                           [&](grip::GripPipeline& pipeline) {
-        ...
-      });
-       */
+      std::thread([&] {
+          cameras[1].SetResolution(320,240);
+          cs::CvSink lifeCamSink = frc::CameraServer::GetInstance()->GetVideo(cameras[1]);
+          cs::CvSource crosshairsOutput =
+              frc::CameraServer::GetInstance()->PutVideo("Crosshairs", 320, 80);
 
-      //runner.RunForever();
-    const int kWidth = 320;
-    const int kHeight = 240;
+          cv::Mat crosshairsMat;
 
+          while (true){
+              if (lifeCamSink.GrabFrame(crosshairsMat) == 0) {
+                // Send the output the error.
+                crosshairsOutput.NotifyError(lifeCamSink.GetError());
+                // skip the rest of the current iteration
+                continue;
+              }
 
-    int object_X_Max=0;
-    int object_Y_Max=0;
-    int object_Y_Min=0;
-    int object_X_Min=0;
-    int centreX; //centre x
-    int centreY; //centre y
-    int objectWidth = 0;
-    int objectArea = 0;
-    int xCrosshairOffset = 0;
-    int yCrosshairOffset = 0;
-    double objectOffset = 0.0; // this value will output 0 at the leftmost pixel to 1 at the right-most pixel
-    double objectAngle = 0.0; //will give an angle from 0 to half of the fov, will be positive on the right hand side, left side is negative
-    double distanceFromObject = 0.0;
-    double widthCargo = 0.28;
-    double widthHatch = 0.44;
-    double widthStrip = 0.325;
-    std::string puttedText = "NULL";
-
-  /*  //Cargo pipeline
-    int cargo_Object_X_Max=0;
-    int cargo_Object_Y_Max=0;
-    int cargo_Object_Y_Min=0;
-    int cargo_Object_X_Min=0;
-    int cargo_CentreX; //centre x
-    int cargo_CentreY; //centre y
-    int cargo_ObjectWidth = 0;
-    int cargo_ObjectArea = 0;
-    //Hatch pipleine
-    int hatch_Object_X_Max=0;
-    int hatch_Object_Y_Max=0;
-    int hatch_Object_Y_Min=0;
-    int hatch_Object_X_Min=0;
-    int hatch_CentreX; //centre x
-    int hatch_CentreY; //centre y
-    int hatch_ObjectWidth = 0;
-    int hatch_ObjectArea = 0;
-    //Strip pipeline
-    int strip_Object_X_Max=0;
-    int strip_Object_Y_Max=0;
-    int strip_Object_Y_Min=0;
-    int strip_Object_X_Min=0;
-    int strip_CentreX; //centre x
-    int strip_CentreY; //centre y
-    int strip_ObjectWidth = 0;
-    int strip_ObjectArea = 0;
-    */
-
-    nt::NetworkTableEntry distanceCargoEntry;
-    nt::NetworkTableEntry offsetCargoEntry;
-    nt::NetworkTableEntry objectAngleCargoEntry;
-    nt::NetworkTableEntry distanceHatchEntry;
-    nt::NetworkTableEntry offsetHatchEntry;
-    nt::NetworkTableEntry objectAngleHatchEntry;
-    nt::NetworkTableEntry distanceStripEntry;
-    nt::NetworkTableEntry offsetStripEntry;
-    nt::NetworkTableEntry objectAngleStripEntry;
-
-    auto inst = nt::NetworkTableInstance::GetDefault();
-    auto cargoTable = inst.GetTable("CargoOutputValues");
-    auto hatchTable = inst.GetTable("HatchOutputValues");
-    auto stripTable = inst.GetTable("StripOutputValues");
-
-    distanceCargoEntry = cargoTable -> GetEntry("distanceCargo");
-    offsetCargoEntry = cargoTable -> GetEntry("offsetCargo");
-    objectAngleCargoEntry = cargoTable -> GetEntry("objectAngleCargo");
-    distanceHatchEntry = hatchTable -> GetEntry("distanceHatch");
-    offsetHatchEntry = hatchTable -> GetEntry("offsetHatch");
-    objectAngleHatchEntry = hatchTable -> GetEntry("objectAngleHatch");
-    distanceStripEntry = stripTable -> GetEntry("distanceStrip");
-    offsetStripEntry = stripTable -> GetEntry("offsetStrip");
-    objectAngleStripEntry = stripTable -> GetEntry("objectAngleStrip");
-
-
-
-    cameras[0].SetResolution(kWidth, kHeight);
-    cameras[1].SetResolution(kWidth, kHeight);
-    cs::CvSink croppedSink = frc::CameraServer::GetInstance()->GetVideo(cameras[0]);
-    cs::CvSink crosshairsSink = frc::CameraServer::GetInstance()->GetVideo(cameras[1]);
-    // Setup a CvSource. This will send images back to the Dashboard
-    cs::CvSource croppedOutput =
-        frc::CameraServer::GetInstance()->PutVideo("Cropped", kWidth, 80);
-    cs::CvSource crosshairsOutput =
-        frc::CameraServer::GetInstance()->PutVideo("Crosshairs", kWidth, kHeight);
-    cs::CvSource pipelineOutputCargo =
-        frc::CameraServer::GetInstance()->PutVideo("cargoPipeline", kWidth, kHeight);
-    cs::CvSource pipelineOutputHatch =
-        frc::CameraServer::GetInstance()->PutVideo("hatchPipeline", kWidth, kHeight);
-    cs::CvSource pipelineOutputStrip =
-        frc::CameraServer::GetInstance()->PutVideo("stripPipeline", kWidth, kHeight);
-
-    // Mats are very memory expensive. Lets reuse this Mat.
-    cv::Mat wideFovMat;
-    cv::Mat crosshairsMat;
-    cv::Mat pipelineMat;
-    //declaring grip pipelines
-    cargoGrip::GripCargoPipeline* cargoPipeline = new cargoGrip::GripCargoPipeline();
-    hatchGrip::GripHatchPipeline* hatchPipeline = new hatchGrip::GripHatchPipeline();
-    stripGrip::GripStripPipeline* stripPipeline = new stripGrip::GripStripPipeline();
-
-    while (true) {
-      const int thresh = 10;
-      // Tell the CvSink to grab a frame from the camera and put it
-      // in the source mat.  If there is an error notify the output.
-      if (croppedSink.GrabFrame(wideFovMat) == 0) {
-        // Send the output the error.
-        croppedOutput.NotifyError(croppedSink.GetError());
-        // skip the rest of the current iteration
-        continue;
-      }
-      if (crosshairsSink.GrabFrame(crosshairsMat) == 0) {
-        // Send the output the error.
-        croppedOutput.NotifyError(crosshairsSink.GetError());
-        // skip the rest of the current iteration
-        continue;
-      }
-      // Put a rectangle on the image (x, y, width, height)
-      cv::Rect rectangle = cv::Rect(0,80,kWidth,80);
-      wideFovMat = wideFovMat(rectangle);
-
-      xCrosshairOffset = 0;
-      yCrosshairOffset = 0;
-      // add the crosshairs
-      cv::line(crosshairsMat, cv::Point(160 + xCrosshairOffset, 80 + yCrosshairOffset), cv::Point(160 + xCrosshairOffset,105 + yCrosshairOffset), CV_RGB(255,0,0));    // vertical
-      cv::line(crosshairsMat, cv::Point(160 + xCrosshairOffset, 135 + yCrosshairOffset), cv::Point(160 + xCrosshairOffset,160 + yCrosshairOffset), CV_RGB(255,0,0));   // vertical
-      cv::line(crosshairsMat, cv::Point(120 + xCrosshairOffset, 120 + yCrosshairOffset), cv::Point(145 + xCrosshairOffset,120 + yCrosshairOffset), CV_RGB(255,0,0));   // horizontal
-      cv::line(crosshairsMat, cv::Point(175 + xCrosshairOffset, 120 + yCrosshairOffset), cv::Point(200 + xCrosshairOffset,120 + yCrosshairOffset), CV_RGB(255,0,0));   // horizontal
-      // Give the output stream a new image to display
-      croppedOutput.PutFrame(wideFovMat);
-      crosshairsOutput.PutFrame(crosshairsMat);
-
-      //Vision process
-
-      //1st GripCargoPipeline
-      //2nd GripHatchPipeline
-      //3rd GripStripPipeline
-
-      //
-      cargoPipeline->Process(wideFovMat);
-      pipelineMat = *(cargoPipeline->GetRgbThresholdOutput());
-      //Vision pixel process
-      struct Pixbgr
-      {
-        unsigned char b:8;
-      };
-      object_X_Max=0;
-      object_Y_Max=0;
-      objectArea = 0;
-      objectWidth = 0;
-      centreX = 0;
-      centreY = 0;
-      distanceFromObject = 0;
-      objectAngle = 0;
-      object_Y_Min=pipelineMat.rows-1;
-      object_X_Min=pipelineMat.cols-1;
-      for(int i = 0; i < pipelineMat.rows; i++)
-      {
-        const struct Pixbgr* Mi = pipelineMat.ptr<struct Pixbgr>(i);
-        for(int j = 0; j < pipelineMat.cols; j++)
-        {
-          if (Mi[j].b > thresh)
-          {
-            if (j < object_X_Min)
-              object_X_Min = j;
-            if (j > object_X_Max)
-              object_X_Max = j;
-            if (i < object_Y_Min)
-              object_Y_Min = i;
-            if (i > object_Y_Max)
-              object_Y_Max = i;
+              int xCrosshairOffset = 0;
+              int yCrosshairOffset = 0;
+              // add the crosshairs
+              cv::line(crosshairsMat, cv::Point(160 + xCrosshairOffset, 80 + yCrosshairOffset), cv::Point(160 + xCrosshairOffset,105 + yCrosshairOffset), CV_RGB(255,0,0));    // vertical
+              cv::line(crosshairsMat, cv::Point(160 + xCrosshairOffset, 135 + yCrosshairOffset), cv::Point(160 + xCrosshairOffset,160 + yCrosshairOffset), CV_RGB(255,0,0));   // vertical
+              cv::line(crosshairsMat, cv::Point(120 + xCrosshairOffset, 120 + yCrosshairOffset), cv::Point(145 + xCrosshairOffset,120 + yCrosshairOffset), CV_RGB(255,0,0));   // horizontal
+              cv::line(crosshairsMat, cv::Point(175 + xCrosshairOffset, 120 + yCrosshairOffset), cv::Point(200 + xCrosshairOffset,120 + yCrosshairOffset), CV_RGB(255,0,0));   // horizontal
+              // Give the output stream a new image to display
+              crosshairsOutput.PutFrame(crosshairsMat);
           }
-        }
-      }
+      }).detach();
 
-      //Calculate area
-      objectArea = (object_X_Max-object_X_Min) * (object_Y_Max-object_Y_Min);
-      std::cout << objectArea << std::endl;
-      std::cout << object_X_Max << std::endl;
-      std::cout << object_X_Min << std::endl;
-      objectWidth = sqrt(objectArea);
-      if (objectWidth != 0){
-      distanceFromObject = (widthCargo)/(objectWidth/320);
+      std::thread([&] {
+          cameras[2].SetResolution(320,240);
+          cs::CvSink backSink = frc::CameraServer::GetInstance()->GetVideo(cameras[2]);
+          cs::CvSource croppedBackOutput =
+              frc::CameraServer::GetInstance()->PutVideo("Back Cropped", 320, 120);
 
-      //it is the average of the centres of object
-      centreX = object_X_Max - object_X_Min;
-      centreY = object_Y_Max - object_Y_Min;
-      std::cout << centreX << std::endl;
-      std::cout << centreY << std::endl;
-      objectOffset = (centreX/k_HResolution) - 0.5; // this value will output 0 at the leftmost pixel to 1 at the right-most pixel,
-      objectAngle = objectAngle*(k_WCameraHFOV); //will give an angle from 0 to half of the fov, will be positive on the right hand side, left side is negative
-      //show text of variables
-      //cv::putText(pipelineMat, "Centre is: (" << std::to_string(centreX) << ":" << std::to_string(centreY) << ")" , cvPoint(50,100), FONT_HERSHEY_SIMPLEX, 1, (0,200,200), 4);
-      distanceCargoEntry.SetDouble(distanceFromObject);
-      offsetCargoEntry.SetDouble(objectOffset);
-      objectAngleCargoEntry.SetDouble(objectOffset);
-      }
+          cv::Mat croppedBackMat;
 
-      // pipelineOutputCargo.PutFrame(pipelineMat);
+          while (true) {
+              if (backSink.GrabFrame(croppedBackMat) == 0) {
+                // Send the output the error.
+                croppedBackOutput.NotifyError(backSink.GetError());
+                // skip the rest of the current iteration
+                continue;
+              }
+              // frontOrBack = visionTable.getEntry("frontOrBack");
 
-
-
-      //reset constants
-      //hatch
-      // hatchPipeline->Process(wideFovMat);
-      // pipelineMat = *(hatchPipeline->GetHsvThresholdOutput());
-      //Vision pixel process
-    /*  struct Pixbgr
-      {
-        unsigned char b:8;
-      }; */
-
-      object_X_Max=0;
-      object_Y_Max=0;
-      objectArea = 0;
-      objectWidth = 0;
-      centreX = 0;
-      centreY = 0;
-      distanceFromObject = 0;
-      objectAngle = 0;
-      object_Y_Min=pipelineMat.rows-1;
-      object_X_Min=pipelineMat.cols-1;
-      for(int i = 0; i < pipelineMat.rows; i++)
-      {
-        const struct Pixbgr* Mi = pipelineMat.ptr<struct Pixbgr>(i);
-        for(int j = 0; j < pipelineMat.cols; j++)
-        {
-          if (Mi[j].b > thresh)
-          {
-            if (j < object_X_Min)
-              object_X_Min = j;
-            if (j > object_X_Max)
-              object_X_Max = j;
-            if (i < object_Y_Min)
-              object_Y_Min = i;
-            if (i > object_Y_Max)
-              object_Y_Max = i;
+              cv::Rect rectangle = cv::Rect(0,60,320,120);
+              croppedBackMat = croppedBackMat(rectangle);
+              // if (frontOrBack == false) {
+                  croppedBackOutput.PutFrame(croppedBackMat);
+              // }
           }
-        }
-      }
+      }).detach();
 
+      std::thread([&] {
+          cameras[0].SetResolution(320,240);
+          cs::CvSink frontSink = frc::CameraServer::GetInstance()->GetVideo(cameras[0]);
+          cs::CvSource croppedFrontOutput =
+              frc::CameraServer::GetInstance()->PutVideo("Front Cropped", 320,120);
 
-      //Calculate area
-      std::cout << object_X_Max << std::endl;
-      std::cout << object_X_Min << std::endl;
-      objectWidth = object_X_Max-object_X_Min;
-       if (objectWidth != 0){
-      distanceFromObject = (widthHatch)/(objectWidth/320);
+          cv::Mat croppedFrontMat;
 
+          while (true) {
+              if (frontSink.GrabFrame(croppedFrontMat) == 0) {
+                // Send the output the error.
+                croppedFrontOutput.NotifyError(frontSink.GetError());
+                // skip the rest of the current iteration
+                continue;
+              }
+              // frontOrBack = visionTable.getEntry("frontOrBack");
 
-      //show text of variables
+              cv::Rect rectangle = cv::Rect(0,60,320,120);
+              croppedFrontMat = croppedFrontMat(rectangle);
 
-      //cv::putText(pipelineMat, "Centre is: (" + std::to_string(centreX) + ":" + std::to_string(centreY) + ")" , cvPoint(50,100), FONT_HERSHEY_SIMPLEX, 1, (0,200,200), 4);
-      //it is the average of the centres of object
-      centreX = object_X_Max - object_X_Min;
-      centreY = object_Y_Max - object_Y_Min;
-      std::cout << centreX << std::endl;
-      std::cout << centreY << std::endl;
-      objectOffset = (centreX/k_HResolution) - 0.5; // this value will output 0 at the leftmost pixel to 1 at the right-most pixel,
-      objectAngle = objectAngle*(k_WCameraHFOV); //will give an angle from 0 to half of the fov, will be positive on the right hand side, left side is negative
-      distanceHatchEntry.SetDouble(distanceFromObject);
-      offsetHatchEntry.SetDouble(objectOffset);
-      objectAngleHatchEntry.SetDouble(objectOffset);
-      // pipelineOutputHatch.PutFrame(pipelineMat);
+              // if (frontOrBack == true) {
+                  croppedFrontOutput.PutFrame(croppedFrontMat);
+              // }
 
-  }
-
-      //start of Strip pipeline
-      stripPipeline->Process(crosshairsMat);
-      pipelineMat = *(stripPipeline->GetHsvThresholdOutput());
-      // Vision pixel process
-    /*  struct Pixbgr
-      {
-        unsigned char b:8;
-      }; */
-
-      object_X_Max=0;
-      object_Y_Max=0;
-      objectArea = 0;
-      objectWidth = 0;
-      centreX = 0;
-      centreY = 0;
-      distanceFromObject = 0;
-      objectAngle = 0;
-
-      object_Y_Min=pipelineMat.rows-1;
-      object_X_Min=pipelineMat.cols-1;
-      for(int i = 0; i < pipelineMat.rows; i++)
-      {
-        const struct Pixbgr* Mi = pipelineMat.ptr<struct Pixbgr>(i);
-        for(int j = 0; j < pipelineMat.cols; j++)
-        {
-          if (Mi[j].b > thresh)
-          {
-            if (j < object_X_Min)
-              object_X_Min = j;
-            if (j > object_X_Max)
-              object_X_Max = j;
-            if (i < object_Y_Min)
-              object_Y_Min = i;
-            if (i > object_Y_Max)
-              object_Y_Max = i;
           }
-        }
-      }
+      }).detach();
+      // std::thread t0 (frontCamera);
+      // std::thread t1 (backCamera);
+      // lifeCam();
+      // std::thread t2 (lifeCam);
 
-
-      //show text of variables
-      //cv::putText(pipelineMat, "Centre is: (" + std::to_string(centreX) + ":" + std::to_string(centreY) + ")" , cvPoint(50,100), FONT_HERSHEY_SIMPLEX, 1, (0,200,200), 4);
-      std::cout << object_X_Max << std::endl;
-      std::cout << object_X_Min << std::endl;
-      objectWidth = object_X_Max-object_X_Min;
-
-      if (objectWidth != 0){
-
-      distanceFromObject = (widthStrip)/(objectWidth/320);
-      std::cout<< "Distance from strip "<< distanceFromObject << std::endl;
-      //it is the average of the centres of object
-      centreX = object_X_Max - object_X_Min;
-      centreY = object_Y_Max - object_Y_Min;
-      std::cout << centreX << std::endl;
-      std::cout << centreY << std::endl;
-      objectOffset = (centreX/k_HResolution) - 0.5; // this value will output 0 at the leftmost pixel to 1 at the right-most pixel,
-      objectAngle = objectAngle*(k_WCameraHFOV); //will give an angle from 0 to half of the fov, will be positive on the right hand side, left side is negative
-      distanceStripEntry.SetDouble(distanceFromObject);
-      offsetStripEntry.SetDouble(objectOffset);
-      objectAngleStripEntry.SetDouble(objectOffset);
-      pipelineOutputStrip.PutFrame(pipelineMat);
-  }
-      //reset constants
-
-     }
-   }).detach();
-  }
+      // t0.detach();
+      // t1.detach();
+      // t2.detach();
 
   // loop forever
   for (;;) std::this_thread::sleep_for(std::chrono::seconds(10));
