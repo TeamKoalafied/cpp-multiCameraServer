@@ -28,6 +28,9 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/video/video.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/highgui/highgui.hpp>
+
 
 /*
    JSON format:
@@ -234,49 +237,57 @@ int main(int argc, char* argv[]) {
       // NetworkTableEntry frontOrBack;
       // NetworkTable visionTable = ntinst.getTable("visionTable");
 
-      std::thread([&] {
-          cameras[2].SetResolution(320,240);
-          cs::CvSink lifeCamSink = frc::CameraServer::GetInstance()->GetVideo(cameras[1]);
-          cs::CvSource crosshairsOutput =
-              frc::CameraServer::GetInstance()->PutVideo("Crosshairs", 320, 80);
-
-          cv::Mat crosshairsMat;
-
-          while (true){
-              if (lifeCamSink.GrabFrame(crosshairsMat) == 0) {
-                // Send the output the error.
-                crosshairsOutput.NotifyError(lifeCamSink.GetError());
-                // skip the rest of the current iteration
-                continue;
-              }
-
-              int xCrosshairOffset = 0;
-              int yCrosshairOffset = 0;
-              // add the crosshairs
-              cv::line(crosshairsMat, cv::Point(160 + xCrosshairOffset, 80 + yCrosshairOffset), cv::Point(160 + xCrosshairOffset,105 + yCrosshairOffset), CV_RGB(255,0,0));    // vertical
-              cv::line(crosshairsMat, cv::Point(160 + xCrosshairOffset, 135 + yCrosshairOffset), cv::Point(160 + xCrosshairOffset,160 + yCrosshairOffset), CV_RGB(255,0,0));   // vertical
-              cv::line(crosshairsMat, cv::Point(120 + xCrosshairOffset, 120 + yCrosshairOffset), cv::Point(145 + xCrosshairOffset,120 + yCrosshairOffset), CV_RGB(255,0,0));   // horizontal
-              cv::line(crosshairsMat, cv::Point(175 + xCrosshairOffset, 120 + yCrosshairOffset), cv::Point(200 + xCrosshairOffset,120 + yCrosshairOffset), CV_RGB(255,0,0));   // horizontal
-              // Give the output stream a new image to display
-              crosshairsOutput.PutFrame(crosshairsMat);
-          }
-      }).detach();
+      // std::thread([&] {
+      //     cameras[2].SetResolution(320,240);
+      //     cs::CvSink lifeCamSink = frc::CameraServer::GetInstance()->GetVideo(cameras[1]);
+      //     cs::CvSource crosshairsOutput =
+      //         frc::CameraServer::GetInstance()->PutVideo("Crosshairs", 320, 80);
+      //
+      //     cv::Mat crosshairsMat;
+      //
+      //     while (true){
+      //         if (lifeCamSink.GrabFrame(crosshairsMat) == 0) {
+      //           // Send the output the error.
+      //           crosshairsOutput.NotifyError(lifeCamSink.GetError());
+      //           // skip the rest of the current iteration
+      //           continue;
+      //         }
+      //
+      //         int xCrosshairOffset = 0;
+      //         int yCrosshairOffset = 0;
+      //         // add the crosshairs
+      //         cv::line(crosshairsMat, cv::Point(160 + xCrosshairOffset, 80 + yCrosshairOffset), cv::Point(160 + xCrosshairOffset,105 + yCrosshairOffset), CV_RGB(255,0,0));    // vertical
+      //         cv::line(crosshairsMat, cv::Point(160 + xCrosshairOffset, 135 + yCrosshairOffset), cv::Point(160 + xCrosshairOffset,160 + yCrosshairOffset), CV_RGB(255,0,0));   // vertical
+      //         cv::line(crosshairsMat, cv::Point(120 + xCrosshairOffset, 120 + yCrosshairOffset), cv::Point(145 + xCrosshairOffset,120 + yCrosshairOffset), CV_RGB(255,0,0));   // horizontal
+      //         cv::line(crosshairsMat, cv::Point(175 + xCrosshairOffset, 120 + yCrosshairOffset), cv::Point(200 + xCrosshairOffset,120 + yCrosshairOffset), CV_RGB(255,0,0));   // horizontal
+      //         // Give the output stream a new image to display
+      //         crosshairsOutput.PutFrame(crosshairsMat);
+      //     }
+      // }).detach();
 
       std::thread([&] {
           cameras[1].SetResolution(320,240);
           cs::CvSink backSink = frc::CameraServer::GetInstance()->GetVideo(cameras[2]);
-          // cs::CvSource rotateOutput =
-          //       frc::CameraServer::GetInstance()->PutVideo("rotated", 320, 240);
-          //
-          // cv::Mat backOrig;
-          // cv::Mat rotateMat;
-          //
-          // while(true){
-          //     backSink.GrabFrame(backOrig);
-          //     cv::cuda::rotate (backOrig, rotateMat, cv::Size(240,320), 90);
-          //
-          //     rotateOutput.PutFrame(rotateMat);
-          // }
+        //   cs::CvSource rotateOutput =
+        //         frc::CameraServer::GetInstance()->PutVideo("rotated", 320, 240);
+        //  cv::Mat src;
+        //  double angle = 90;
+        //   while(true){
+        //       backSink.GrabFrame(src);
+        //     // get rotation matrix for rotating the image around its center in pixel coordinates
+        //     cv::Point2f center((src.cols-1)/2.0, (src.rows-1)/2.0);
+        //     cv::Mat rot = cv::getRotationMatrix2D(center, angle, 1.0);
+        //     // determine bounding rectangle, center not relevant
+        //     cv::Rect2f bbox = cv::RotatedRect(cv::Point2f(), src.size(), angle).boundingRect2f();
+        //     // adjust transformation matrix
+        //     rot.at<double>(0,2) += bbox.width/2.0 - src.cols/2.0;
+        //     rot.at<double>(1,2) += bbox.height/2.0 - src.rows/2.0;
+        //
+        //     cv::Mat dst;
+        //     cv::warpAffine(src, dst, rot, bbox.size());
+        //
+        //     rotateOutput.PutFrame(dst);
+        // }
 
       }).detach();
 
