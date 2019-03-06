@@ -211,83 +211,6 @@ class MyPipeline : public frc::VisionPipeline {
 */
 }  // namespace
 
-//threads begin here
-void frontCamera() {
-    std::vector<cs::VideoSource> cameras;
-    cameras[0].SetResolution(320,240);
-    cs::CvSink frontSink = frc::CameraServer::GetInstance()->GetVideo(cameras[0]);
-    cs::CvSource croppedFrontOutput =
-        frc::CameraServer::GetInstance()->PutVideo("Front Cropped", 320, 80);
-
-    cv::Mat croppedFrontMat;
-
-    while (true) {
-        if (frontSink.GrabFrame(croppedFrontMat) == 0) {
-          // Send the output the error.
-          croppedFrontOutput.NotifyError(frontSink.GetError());
-          // skip the rest of the current iteration
-          continue;
-        }
-
-        cv::Rect rectangle = cv::Rect(0,80,320,80);
-        croppedFrontMat = croppedFrontMat(rectangle);
-
-         croppedFrontOutput.PutFrame(croppedFrontMat);
-    }
-}
-
-void backCamera() {
-    std::vector<cs::VideoSource> cameras;
-    cameras[1].SetResolution(320,240);
-    cs::CvSink backSink = frc::CameraServer::GetInstance()->GetVideo(cameras[1]);
-    cs::CvSource croppedBackOutput =
-        frc::CameraServer::GetInstance()->PutVideo("Back Cropped", 320, 80);
-
-    cv::Mat croppedBackMat;
-
-    while (true) {
-        if (backSink.GrabFrame(croppedBackMat) == 0) {
-          // Send the output the error.
-          croppedBackOutput.NotifyError(backSink.GetError());
-          // skip the rest of the current iteration
-          continue;
-        }
-
-        cv::Rect rectangle = cv::Rect(0,80,320,80);
-        croppedBackMat = croppedBackMat(rectangle);
-
-        croppedBackOutput.PutFrame(croppedBackMat);
-    }
-}
-
-void lifeCam() {
-    std::vector<cs::VideoSource> cameras;
-    cameras[1].SetResolution(320,240);
-    cs::CvSink lifeCamSink = frc::CameraServer::GetInstance()->GetVideo(cameras[1]);
-    cs::CvSource crosshairsOutput =
-        frc::CameraServer::GetInstance()->PutVideo("Crosshairs", 320, 80);
-
-    cv::Mat crosshairsMat;
-
-    while (true){
-        if (lifeCamSink.GrabFrame(crosshairsMat) == 0) {
-          // Send the output the error.
-          crosshairsOutput.NotifyError(lifeCamSink.GetError());
-          // skip the rest of the current iteration
-          continue;
-        }
-
-        int xCrosshairOffset = 0;
-        int yCrosshairOffset = 0;
-        // add the crosshairs
-        cv::line(crosshairsMat, cv::Point(160 + xCrosshairOffset, 80 + yCrosshairOffset), cv::Point(160 + xCrosshairOffset,105 + yCrosshairOffset), CV_RGB(255,0,0));    // vertical
-        cv::line(crosshairsMat, cv::Point(160 + xCrosshairOffset, 135 + yCrosshairOffset), cv::Point(160 + xCrosshairOffset,160 + yCrosshairOffset), CV_RGB(255,0,0));   // vertical
-        cv::line(crosshairsMat, cv::Point(120 + xCrosshairOffset, 120 + yCrosshairOffset), cv::Point(145 + xCrosshairOffset,120 + yCrosshairOffset), CV_RGB(255,0,0));   // horizontal
-        cv::line(crosshairsMat, cv::Point(175 + xCrosshairOffset, 120 + yCrosshairOffset), cv::Point(200 + xCrosshairOffset,120 + yCrosshairOffset), CV_RGB(255,0,0));   // horizontal
-        // Give the output stream a new image to display
-        crosshairsOutput.PutFrame(crosshairsMat);
-    }
-}
 
 int main(int argc, char* argv[]) {
   if (argc >= 2) configFile = argv[1];
@@ -312,7 +235,7 @@ int main(int argc, char* argv[]) {
       // NetworkTable visionTable = ntinst.getTable("visionTable");
 
       std::thread([&] {
-          cameras[1].SetResolution(320,240);
+          cameras[2].SetResolution(320,240);
           cs::CvSink lifeCamSink = frc::CameraServer::GetInstance()->GetVideo(cameras[1]);
           cs::CvSource crosshairsOutput =
               frc::CameraServer::GetInstance()->PutVideo("Crosshairs", 320, 80);
@@ -340,55 +263,28 @@ int main(int argc, char* argv[]) {
       }).detach();
 
       std::thread([&] {
-          cameras[2].SetResolution(320,240);
+          cameras[1].SetResolution(320,240);
           cs::CvSink backSink = frc::CameraServer::GetInstance()->GetVideo(cameras[2]);
-          cs::CvSource croppedBackOutput =
-              frc::CameraServer::GetInstance()->PutVideo("Back Cropped", 320, 120);
+          // cs::CvSource rotateOutput =
+          //       frc::CameraServer::GetInstance()->PutVideo("rotated", 320, 240);
+          //
+          // cv::Mat backOrig;
+          // cv::Mat rotateMat;
+          //
+          // while(true){
+          //     backSink.GrabFrame(backOrig);
+          //     cv::cuda::rotate (backOrig, rotateMat, cv::Size(240,320), 90);
+          //
+          //     rotateOutput.PutFrame(rotateMat);
+          // }
 
-          cv::Mat croppedBackMat;
-
-          while (true) {
-              if (backSink.GrabFrame(croppedBackMat) == 0) {
-                // Send the output the error.
-                croppedBackOutput.NotifyError(backSink.GetError());
-                // skip the rest of the current iteration
-                continue;
-              }
-              // frontOrBack = visionTable.getEntry("frontOrBack");
-
-              cv::Rect rectangle = cv::Rect(0,60,320,120);
-              croppedBackMat = croppedBackMat(rectangle);
-              // if (frontOrBack == false) {
-                  croppedBackOutput.PutFrame(croppedBackMat);
-              // }
-          }
       }).detach();
 
       std::thread([&] {
           cameras[0].SetResolution(320,240);
           cs::CvSink frontSink = frc::CameraServer::GetInstance()->GetVideo(cameras[0]);
-          cs::CvSource croppedFrontOutput =
-              frc::CameraServer::GetInstance()->PutVideo("Front Cropped", 320,120);
 
-          cv::Mat croppedFrontMat;
 
-          while (true) {
-              if (frontSink.GrabFrame(croppedFrontMat) == 0) {
-                // Send the output the error.
-                croppedFrontOutput.NotifyError(frontSink.GetError());
-                // skip the rest of the current iteration
-                continue;
-              }
-              // frontOrBack = visionTable.getEntry("frontOrBack");
-
-              cv::Rect rectangle = cv::Rect(0,60,320,120);
-              croppedFrontMat = croppedFrontMat(rectangle);
-
-              // if (frontOrBack == true) {
-                  croppedFrontOutput.PutFrame(croppedFrontMat);
-              // }
-
-          }
       }).detach();
       // std::thread t0 (frontCamera);
       // std::thread t1 (backCamera);
