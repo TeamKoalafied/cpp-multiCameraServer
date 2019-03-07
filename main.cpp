@@ -234,6 +234,8 @@ int main(int argc, char* argv[]) {
       std::vector<cs::VideoSource> cameras;
       for (auto&& cameraConfig : cameraConfigs)
         cameras.emplace_back(StartCamera(cameraConfig));
+
+
       // NetworkTableEntry frontOrBack;
       // NetworkTable visionTable = ntinst.getTable("visionTable");
 
@@ -265,11 +267,14 @@ int main(int argc, char* argv[]) {
       //     }
       // }).detach();
 
-      std::thread([&] {
-          cameras[2].SetResolution(320,240);
-          cs::CvSink backCam = frc::CameraServer::GetInstance()->GetVideo(cameras[2]);
+      cs::CvSink frontCam = frc::CameraServer::GetInstance()->GetVideo(cameras[0]);
+      cs::CvSink backCam = frc::CameraServer::GetInstance()->GetVideo(cameras[1]);
 
-          cs::CvSource backServer = frc::CameraServer::GetInstance()->PutVideo("Back Camera", k_WResolution, k_HResolution);
+      cs::CvSource backServer = frc::CameraServer::GetInstance()->PutVideo("Back Camera", k_WResolution, k_HResolution);
+      cs::CvSource frontServer = frc::CameraServer::GetInstance()->PutVideo("Front Camera", k_WResolution, k_HResolution);
+
+      std::thread([&] {
+          cameras[1].SetResolution(320,240);
 //          backServer.SetFPS(15);
 
           cv::Mat backMat;
@@ -310,10 +315,7 @@ int main(int argc, char* argv[]) {
       }).detach();
 
       std::thread([&] {
-          cameras[1].SetResolution(320,240);
-          cs::CvSink frontCam = frc::CameraServer::GetInstance()->GetVideo(cameras[1]);
-
-          cs::CvSource frontServer = frc::CameraServer::GetInstance()->PutVideo("Front Camera", k_WResolution, k_HResolution);
+          cameras[0].SetResolution(320,240);
           // frontServer.SetFPS(15);
 
           cv::Mat frontMat;
