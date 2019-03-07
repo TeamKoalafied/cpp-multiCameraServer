@@ -68,7 +68,7 @@
  */
 
  const int k_HResolution = 320;
- const int k_VResolution = 240;
+ const int k_WResolution = 240;
  const int k_WCameraHFOV = 128;
  const int k_WCameraVFOV = 96;
  const int k_LightCamCameraHFOV = 52;
@@ -266,8 +266,26 @@ int main(int argc, char* argv[]) {
       // }).detach();
 
       std::thread([&] {
-          cameras[1].SetResolution(320,240);
-          cs::CvSink backSink = frc::CameraServer::GetInstance()->GetVideo(cameras[2]);
+          cameras[2].SetResolution(320,240);
+          cs::CvSink backCam = frc::CameraServer::GetInstance()->GetVideo(cameras[2]);
+
+          cs::CvSource backServer = frc::CameraServer::GetInstance()->PutVideo("Back Camera", k_WResolution, k_HResolution);
+//          backServer.SetFPS(15);
+
+          cv::Mat backMat;
+          int counter = 0;
+
+          while (true){
+              if (backCam.GrabFrame(backMat) == 0) {
+                  backServer.NotifyError(backCam.GetError());
+                  continue;
+              }
+
+              counter = (counter + 1) % 2;
+              if (!counter) {
+                  backServer.PutFrame(backMat);
+              }
+          }
         //   cs::CvSource rotateOutput =
         //         frc::CameraServer::GetInstance()->PutVideo("rotated", 320, 240);
         //  cv::Mat src;
@@ -292,10 +310,26 @@ int main(int argc, char* argv[]) {
       }).detach();
 
       std::thread([&] {
-          cameras[0].SetResolution(320,240);
-          cs::CvSink frontSink = frc::CameraServer::GetInstance()->GetVideo(cameras[0]);
+          cameras[1].SetResolution(320,240);
+          cs::CvSink frontCam = frc::CameraServer::GetInstance()->GetVideo(cameras[1]);
 
+          cs::CvSource frontServer = frc::CameraServer::GetInstance()->PutVideo("Front Camera", k_WResolution, k_HResolution);
+          // frontServer.SetFPS(15);
 
+          cv::Mat frontMat;
+          int counter = 0;
+
+          while (true){
+              if (frontCam.GrabFrame(frontMat) == 0) {
+                  frontServer.NotifyError(frontCam.GetError());
+                  continue;
+              }
+
+              counter = (counter + 1) % 2;
+              if (!counter) {
+                  frontServer.PutFrame(frontMat);
+              }
+          }
       }).detach();
       // std::thread t0 (frontCamera);
       // std::thread t1 (backCamera);
