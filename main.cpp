@@ -9,28 +9,20 @@
 #include <string>
 #include <thread>
 #include <vector>
-#include "GripCargoPipeline.h"
-#include "GripStripPipeline.h"
-#include "GripHatchPipeline.h"
-#include <networktables/NetworkTableInstance.h>
+
 #include <vision/VisionPipeline.h>
 #include <vision/VisionRunner.h>
 #include <wpi/StringRef.h>
 #include <wpi/json.h>
 #include <wpi/raw_istream.h>
 #include <wpi/raw_ostream.h>
+
+#include "cameraserver/CameraServer.h"
 #include <opencv2/core/core.hpp>
 #include <opencv2/core/types.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-#include "cameraserver/CameraServer.h"
-#include <networktables/NetworkTableEntry.h>
-#include <networktables/NetworkTable.h>
-#include <opencv2/highgui/highgui.hpp>
-#include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/video/video.hpp>
-#include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/highgui/highgui.hpp>
 
+#include <iostream>
 
 /*
    JSON format:
@@ -66,13 +58,6 @@
        ]
    }
  */
-
- const int k_HResolution = 320;
- const int k_WResolution = 240;
- const int k_WCameraHFOV = 128;
- const int k_WCameraVFOV = 96;
- const int k_LightCamCameraHFOV = 52;
- const int k_LightCamCameraVFOV = 39;
 
 static const char* configFile = "/boot/frc.json";
 
@@ -159,10 +144,10 @@ bool ReadConfig() {
   // ntmode (optional)
   if (j.count("ntmode") != 0) {
     try {
-      auto str = j.at("ntmode").get<std::string>();
-      wpi::StringRef s(str);
-      if (s.equals_lower("client")) {
         server = false;
+        auto str = j.at("ntmode").get<std::string>();
+        wpi::StringRef s(str);
+        if (s.equals_lower("client")) {
       } else if (s.equals_lower("server")) {
         server = true;
       } else {
@@ -194,15 +179,16 @@ cs::UsbCamera StartCamera(const CameraConfig& config) {
   auto server = inst->StartAutomaticCapture(camera);
 
   camera.SetConfigJson(config.config);
-  // camera.SetConnectionStrategy(cs::VideoSource::kConnectionKeepOpen);
+//  // It takes a while to open a new connection so keep it open
+//  camera.SetConnectionStrategy(cs::VideoSource::kConnectionKeepOpen);
 
   if (config.streamConfig.is_object())
     server.SetConfigJson(config.streamConfig);
-    return camera;
+
+  return camera;
 }
 
 // example pipeline
-/*
 class MyPipeline : public frc::VisionPipeline {
  public:
   int val = 0;
@@ -211,136 +197,139 @@ class MyPipeline : public frc::VisionPipeline {
     ++val;
   }
 };
-*/
+
 }  // namespace
 
-
 int main(int argc, char* argv[]) {
+
   if (argc >= 2) configFile = argv[1];
 
   // read configuration
   if (!ReadConfig()) return EXIT_FAILURE;
 
-  // start NetworkTables
-  auto ntinst = nt::NetworkTableInstance::GetDefault();
-  if (server) {
-    wpi::outs() << "Setting up NetworkTables server\n";
-    ntinst.StartServer();
-  } else {
-    wpi::outs() << "Setting up NetworkTables client for team " << team << '\n';
-    ntinst.StartClientTeam(team);
+  // start cameras
+  std::vector<cs::VideoSource> cameras;
+  for (auto&& cameraConfig : cameraConfigs)
+    cameras.emplace_back(StartCamera(cameraConfig));
+
+  //
+  // On a Raspberry Pi 3B+, if all the USB ports connect to USB cameras then the
+  // cameras can be uniquely identified by the USB device pathnames as follows:
+  //
+  //	/----------------------------\
+  //	| |      | | USB1 | | USB3 | |
+  //	| |  IP  |  ======   ======  |
+  //	| |      | | USB2 | | USB4 | |
+  //	\----------------------------/
+  //
+  //  USB1: /dev/v4l/by-path/platform-3f980000.usb-usb-0:1.1.2:1.0-video-index0
+  //  USB2: /dev/v4l/by-path/platform-3f980000.usb-usb-0:1.1.3:1.0-video-index0
+  //  USB3: /dev/v4l/by-path/platform-3f980000.usb-usb-0:1.3:1.0-video-index0
+  //  USB4: /dev/v4l/by-path/platform-3f980000.usb-usb-0:1.2:1.0-video-index0
+  //
+
+  //UsbCamera frontCamera = CameraServer.getInstance().startAutomaticCapture("Front",
+  //  "/.dev/v4l/by-path/platform-3f980000.usb-usb-0:1.2:1.0-video-index0");
+  //frontCamera.setVideoMode(PixelFormat.kMJPEG, 320, 240, 30);
+  //frontCamera.setBrightness(50);
+  //frontCamera.setWhiteBalanceHoldCurrent();
+  //frontCamera.setExposureManual(15);
+
+  // start separate image processing threads for each camera if present
+  if (cameras.size() >= 1) {
+
+    // c.name = config.at("name").get<std::string>();
+    // auto str = cameras.at("name").get<std::string>();
+    // wpi::StringRef s(str);
+    // if (s.equals_lower("front")) {
+
+    std::thread([&] {
+      // Control bandwidth by defining output resolution and camera frame rate divider
+      const double kWidth = 320.0;
+      const double kHeight = 240.0;
+      const int kFrameRateDivider = 2;
+
+      // Front facing drive camera. We just want to draw cross hairs on this.
+      cs::CvSink FrontCam = frc::CameraServer::GetInstance()->GetVideo(cameras[0]);
+      // Setup a CvSource. This will send images back to the Dashboard
+      cs::CvSource FrontSvr =
+        frc::CameraServer::GetInstance()->PutVideo("FrontCam", kWidth, kHeight);
+      // FrontSvr.SetFPS(10); // This does not seem to work
+
+      // Create mats to hold images
+      cv::Mat frontMat;
+      cv::Mat frontView;
+      int counter = 0;
+
+      while (true) {
+        // Tell the CvSink to grab a frame from the camera and put it
+        // in the source mat.  If there is an error notify the output.
+        if (FrontCam.GrabFrame(frontMat) == 0) {
+          // Send error to the output
+          FrontSvr.NotifyError(FrontCam.GetError());
+          // skip the rest of the current iteration
+          continue;
+        }
+
+	// Skip frames (when counter is not 0) to reduce bandwidth
+	counter = (counter + 1) % kFrameRateDivider;
+	if (!counter) {
+	  // Scale the image (if needed) to reduce bandwidth
+          cv::resize(frontMat, frontView, cv::Size(kWidth, kHeight), 0.0, 0.0, cv::INTER_AREA);
+          // Give the output stream a new image to display
+          FrontSvr.PutFrame(frontView);
+	}
+      }
+    }).detach();
   }
 
-      std::vector<cs::VideoSource> cameras;
-      for (auto&& cameraConfig : cameraConfigs)
-        cameras.emplace_back(StartCamera(cameraConfig));
+  // start separate image processing threads for each camera if present
+  if (cameras.size() >= 2) {
 
+    // c.name = config.at("name").get<std::string>();
+    // auto str = cameras.at("name").get<std::string>();
+    // wpi::StringRef s(str);
+    // if (s.equals_lower("back")) {
 
-      // NetworkTableEntry frontOrBack;
-      // NetworkTable visionTable = ntinst.getTable("visionTable");
+    std::thread([&] {
+      // Control bandwidth by defining output resolution and camera frame rate divider
+      const double kWidth = 320.0;
+      const double kHeight = 240.0;
+      const int kFrameRateDivider = 2;
 
-      // std::thread([&] {
-      //     cameras[2].SetResolution(320,240);
-      //     cs::CvSink lifeCamSink = frc::CameraServer::GetInstance()->GetVideo(cameras[1]);
-      //     cs::CvSource crosshairsOutput =
-      //         frc::CameraServer::GetInstance()->PutVideo("Crosshairs", 320, 80);
-      //
-      //     cv::Mat crosshairsMat;
-      //
-      //     while (true){
-      //         if (lifeCamSink.GrabFrame(crosshairsMat) == 0) {
-      //           // Send the output the error.
-      //           crosshairsOutput.NotifyError(lifeCamSink.GetError());
-      //           // skip the rest of the current iteration
-      //           continue;
-      //         }
-      //
-      //         int xCrosshairOffset = 0;
-      //         int yCrosshairOffset = 0;
-      //         // add the crosshairs
-      //         cv::line(crosshairsMat, cv::Point(160 + xCrosshairOffset, 80 + yCrosshairOffset), cv::Point(160 + xCrosshairOffset,105 + yCrosshairOffset), CV_RGB(255,0,0));    // vertical
-      //         cv::line(crosshairsMat, cv::Point(160 + xCrosshairOffset, 135 + yCrosshairOffset), cv::Point(160 + xCrosshairOffset,160 + yCrosshairOffset), CV_RGB(255,0,0));   // vertical
-      //         cv::line(crosshairsMat, cv::Point(120 + xCrosshairOffset, 120 + yCrosshairOffset), cv::Point(145 + xCrosshairOffset,120 + yCrosshairOffset), CV_RGB(255,0,0));   // horizontal
-      //         cv::line(crosshairsMat, cv::Point(175 + xCrosshairOffset, 120 + yCrosshairOffset), cv::Point(200 + xCrosshairOffset,120 + yCrosshairOffset), CV_RGB(255,0,0));   // horizontal
-      //         // Give the output stream a new image to display
-      //         crosshairsOutput.PutFrame(crosshairsMat);
-      //     }
-      // }).detach();
+      // Back facing drive camera. We just want to draw cross hairs on this.
+      cs::CvSink BackCam = frc::CameraServer::GetInstance()->GetVideo(cameras[1]);
+      // Setup a CvSource. This will send images back to the Dashboard
+      cs::CvSource BackSvr =
+        frc::CameraServer::GetInstance()->PutVideo("BackCam", kWidth, kHeight);
+      // BackSvr.SetFPS(10); // This does not seem to work
 
-      cs::CvSink frontCam = frc::CameraServer::GetInstance()->GetVideo(cameras[0]);
-      cs::CvSink backCam = frc::CameraServer::GetInstance()->GetVideo(cameras[1]);
+      // Create mats to hold images
+      cv::Mat backMat;
+      cv::Mat backView;
+      int counter = 0;
 
-      cs::CvSource backServer = frc::CameraServer::GetInstance()->PutVideo("Back Camera", k_WResolution, k_HResolution);
-      cs::CvSource frontServer = frc::CameraServer::GetInstance()->PutVideo("Front Camera", k_WResolution, k_HResolution);
+      while (true) {
+        // Tell the CvSink to grab a frame from the camera and put it
+        // in the source mat.  If there is an error notify the output.
+        if (BackCam.GrabFrame(backMat) == 0) {
+          // Send error to the output
+          BackSvr.NotifyError(BackCam.GetError());
+          // skip the rest of the current iteration
+          continue;
+        }
 
-      std::thread([&] {
-          cameras[1].SetResolution(320,240);
-//          backServer.SetFPS(15);
-
-          cv::Mat backMat;
-          int counter = 0;
-
-          while (true){
-              if (backCam.GrabFrame(backMat) == 0) {
-                  backServer.NotifyError(backCam.GetError());
-                  continue;
-              }
-
-              counter = (counter + 1) % 2;
-              if (!counter) {
-                  backServer.PutFrame(backMat);
-              }
-          }
-        //   cs::CvSource rotateOutput =
-        //         frc::CameraServer::GetInstance()->PutVideo("rotated", 320, 240);
-        //  cv::Mat src;
-        //  double angle = 90;
-        //   while(true){
-        //       backSink.GrabFrame(src);
-        //     // get rotation matrix for rotating the image around its center in pixel coordinates
-        //     cv::Point2f center((src.cols-1)/2.0, (src.rows-1)/2.0);
-        //     cv::Mat rot = cv::getRotationMatrix2D(center, angle, 1.0);
-        //     // determine bounding rectangle, center not relevant
-        //     cv::Rect2f bbox = cv::RotatedRect(cv::Point2f(), src.size(), angle).boundingRect2f();
-        //     // adjust transformation matrix
-        //     rot.at<double>(0,2) += bbox.width/2.0 - src.cols/2.0;
-        //     rot.at<double>(1,2) += bbox.height/2.0 - src.rows/2.0;
-        //
-        //     cv::Mat dst;
-        //     cv::warpAffine(src, dst, rot, bbox.size());
-        //
-        //     rotateOutput.PutFrame(dst);
-        // }
-
-      }).detach();
-
-      std::thread([&] {
-          cameras[0].SetResolution(320,240);
-          // frontServer.SetFPS(15);
-
-          cv::Mat frontMat;
-          int counter = 0;
-
-          while (true){
-              if (frontCam.GrabFrame(frontMat) == 0) {
-                  frontServer.NotifyError(frontCam.GetError());
-                  continue;
-              }
-
-              counter = (counter + 1) % 2;
-              if (!counter) {
-                  frontServer.PutFrame(frontMat);
-              }
-          }
-      }).detach();
-      // std::thread t0 (frontCamera);
-      // std::thread t1 (backCamera);
-      // lifeCam();
-      // std::thread t2 (lifeCam);
-
-      // t0.detach();
-      // t1.detach();
-      // t2.detach();
+        // Skip frames (when counter is not 0) to reduce bandwidth
+        counter = (counter + 1) % kFrameRateDivider;
+        if (!counter) {
+          // Scale the image (if needed) to reduce bandwidth
+          cv::resize(backMat, backView, cv::Size(kWidth, kHeight), 0.0, 0.0, cv::INTER_AREA);
+          // Give the output stream a new image to display
+          BackSvr.PutFrame(backView);
+        }
+      }
+    }).detach();
+  }
 
   // loop forever
   for (;;) std::this_thread::sleep_for(std::chrono::seconds(10));
