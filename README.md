@@ -11,7 +11,7 @@
 Install the Raspbian compiler [1] as well as GNU make [2].
 1. https://github.com/wpilibsuite/raspbian-toolchain/releases
 2. (windows) http://gnuwin32.sourceforge.net/packages/make.htm
-3. Set the CXX variable in the makefile to the path to ```C:\\PATH_TO_DIR\\raspbian9\\bin\\arm-raspbian9-linux-gnueabihf-g++.exe```
+3. Set the CXX variable in the makefile to the path to ```C:\PATH_TO_DIR\raspbian9\bin\arm-raspbian9-linux-gnueabihf-g++.exe```
 
 ### Building
 Run ```make```
