@@ -197,6 +197,21 @@ namespace {
     };
 }  // namespace
 
+
+/* This function is to reduce the framerate by first only taking every nth frame (n being determined by frameRateDivider),
+and then resizes (if necessary) to width*height, and then outputs that to the cameraServer.
+*/
+void frameReduce (int frameRateDivider, int counter, int width, int height, cv::Mat view, cv::Mat mat, cs::CvSource svr) {
+    // Skip frames (when counter is not 0) to reduce bandwidth
+    counter = (counter + 1) % frameRateDivider;
+    if (!counter) {
+        // Scale the image (if needed) to reduce bandwidth
+        cv::resize(mat, view, cv::Size(width, height), 0.0, 0.0, cv::INTER_AREA);
+        // Give the output stream a new image to display
+        svr.PutFrame(view);
+    }
+}
+
 int main(int argc, char* argv[]) {
 
     if (argc >= 2) configFile = argv[1];
@@ -212,17 +227,17 @@ int main(int argc, char* argv[]) {
     //
     // On a Raspberry Pi 3B+, if all the USB ports connect to USB cameras then the
     // cameras can be uniquely identified by the USB device pathnames as follows:
-    //
-    //	/----------------------------\
-    //	| |      | | USB1 | | USB3 | |
-    //	| |  IP  |  ======   ======  |
-    //	| |      | | USB2 | | USB4 | |
-    //	\----------------------------/
-    //
-    //  USB1: /dev/v4l/by-path/platform-3f980000.usb-usb-0:1.1.2:1.0-video-index0
-    //  USB2: /dev/v4l/by-path/platform-3f980000.usb-usb-0:1.1.3:1.0-video-index0
-    //  USB3: /dev/v4l/by-path/platform-3f980000.usb-usb-0:1.3:1.0-video-index0
-    //  USB4: /dev/v4l/by-path/platform-3f980000.usb-usb-0:1.2:1.0-video-index0
+    /// \n
+    //	/----------------------------\ \n
+    //	| |      | | USB1 | | USB3 | | \n
+    //	| |  IP  |  ======   ======  | \n
+    //	| |      | | USB2 | | USB4 | | \n
+    //	\----------------------------/ \n
+    // \n
+    //  USB1: /dev/v4l/by-path/platform-3f980000.usb-usb-0:1.1.2:1.0-video-index0 \n
+    //  USB2: /dev/v4l/by-path/platform-3f980000.usb-usb-0:1.1.3:1.0-video-index0 \n
+    //  USB3: /dev/v4l/by-path/platform-3f980000.usb-usb-0:1.3:1.0-video-index0 \n
+    //  USB4: /dev/v4l/by-path/platform-3f980000.usb-usb-0:1.2:1.0-video-index0 \n
     //
 
     //UsbCamera frontCamera = CameraServer.getInstance().startAutomaticCapture("Front",
@@ -240,6 +255,7 @@ int main(int argc, char* argv[]) {
     // wpi::StringRef s(str);
     // if (s.equals_lower("front")) {
 
+        // Thread for the first camera
         std::thread([&] {
             // Control bandwidth by defining output resolution and camera frame rate divider
             const double kWidth = 320.0;
@@ -249,7 +265,7 @@ int main(int argc, char* argv[]) {
             // Front facing drive camera. We just want to draw cross hairs on this.
             cs::CvSink FrontCam = frc::CameraServer::GetInstance()->GetVideo(cameras[0]);
             // Setup a CvSource. This will send images back to the Dashboard
-            cs::CvSource FrontSvr =
+            cs::CvSource frontSvr =
             frc::CameraServer::GetInstance()->PutVideo("FrontCam", kWidth, kHeight);
             // FrontSvr.SetFPS(10); // This does not seem to work
 
@@ -263,24 +279,17 @@ int main(int argc, char* argv[]) {
                     // in the source mat.  If there is an error notify the output.
                     if (FrontCam.GrabFrame(frontMat) == 0) {
                     // Send error to the output
-                    FrontSvr.NotifyError(FrontCam.GetError());
+                    frontSvr.NotifyError(FrontCam.GetError());
                     // skip the rest of the current iteration
                     continue;
                 }
 
-                // Skip frames (when counter is not 0) to reduce bandwidth
-                counter = (counter + 1) % kFrameRateDivider;
-                if (!counter) {
-                    // Scale the image (if needed) to reduce bandwidth
-                    cv::resize(frontMat, frontView, cv::Size(kWidth, kHeight), 0.0, 0.0, cv::INTER_AREA);
-                    // Give the output stream a new image to display
-                    FrontSvr.PutFrame(frontView);
-                }
+                frameReduce(kFrameRateDivider, counter, kWidth, kHeight, frontView, frontMat, frontSvr);
             }
         }).detach();
     }
 
-    // start separate image processing threads for each camera if present
+    // Thread for second camera if it exists
     if (cameras.size() >= 2) {
 
         // c.name = config.at("name").get<std::string>();
@@ -297,7 +306,7 @@ int main(int argc, char* argv[]) {
             // Back facing drive camera. We just want to draw cross hairs on this.
             cs::CvSink BackCam = frc::CameraServer::GetInstance()->GetVideo(cameras[1]);
             // Setup a CvSource. This will send images back to the Dashboard
-            cs::CvSource BackSvr =
+            cs::CvSource backSvr =
             frc::CameraServer::GetInstance()->PutVideo("BackCam", kWidth, kHeight);
             // BackSvr.SetFPS(10); // This does not seem to work
 
@@ -311,18 +320,11 @@ int main(int argc, char* argv[]) {
                 // in the source mat.  If there is an error notify the output.
                 if (BackCam.GrabFrame(backMat) == 0) {
                     // Send error to the output
-                    BackSvr.NotifyError(BackCam.GetError());
+                    backSvr.NotifyError(BackCam.GetError());
                     // skip the rest of the current iteration
                     continue;
                 }
-                // Skip frames (when counter is not 0) to reduce bandwidth
-                counter = (counter + 1) % kFrameRateDivider;
-                if (!counter) {
-                    // Scale the image (if needed) to reduce bandwidth
-                    cv::resize(backMat, backView, cv::Size(kWidth, kHeight), 0.0, 0.0, cv::INTER_AREA);
-                    // Give the output stream a new image to display
-                    BackSvr.PutFrame(backView);
-                }
+                frameReduce(kFrameRateDivider, counter, kWidth, kHeight, backView, backMat, backSvr);
             }
         }).detach();
     }
