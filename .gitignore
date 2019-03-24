@@ -5,3 +5,6 @@
 /archive/archived-branches
 /.vscode/*
 /.vscode
+/Doxyfile
+/docs/*
+/docs
