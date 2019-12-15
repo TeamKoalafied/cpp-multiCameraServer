@@ -255,6 +255,8 @@ int main(int argc, char* argv[]) {
     // wpi::StringRef s(str);
     // if (s.equals_lower("front")) {
 
+        // test
+        
         // Thread for the first camera
         std::thread([&] {
             // Control bandwidth by defining output resolution and camera frame rate divider
