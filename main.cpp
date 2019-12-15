@@ -285,7 +285,7 @@ int main(int argc, char* argv[]) {
                     // skip the rest of the current iteration
                     continue;
                 }
-
+                // call earlier function to reduce frames sent
                 frameReduce(kFrameRateDivider, counter, kWidth, kHeight, frontView, frontMat, frontSvr);
             }
         }).detach();
